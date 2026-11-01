@@ -1,6 +1,6 @@
 # BattleCardPointsMod · 战斗牌点数显示
 
-用于《吉星派对》（Astral Party）的 CesiumLoader 模组，基于 CombatOddsMod 的战斗覆盖层实现。可与原战斗胜率助手同时使用。
+用于《吉星派对》（Astral Party）的 CesiumLoader 模组。在战斗过程中，直接在每张战斗牌上方展示点数信息（手牌上方显示预估点数范围，打出后显示服务器已同步的实际点数）。
 
 ## 安装
 
@@ -22,30 +22,25 @@
 
 ## 功能
 
-- 战斗界面右侧显示双方实时攻防与已同步的判定骰点数。
-- 显示服务器快照中每张战斗牌的具体点数，支持重复牌、0点和负数。
-- 每张牌独占一行，长文本自动换行，文本区域随内容增高。
-- 牌名去除 SDK 附加的数字编号，“最近使用”同样只保留牌名。
-- 出牌后刷新，结算期间保留最后点数，战斗窗口关闭后隐藏。
-
-单张卡牌点数读取自 `BattleRole.CardCombatBonus.CardBonus`。服务器尚未下发时显示“等待服务器同步”，不会把尚未结算的随机范围当作实际点数。
+- **手牌点数预估**：在战斗手牌未打出时，每张战斗牌上方实时显示其可能投出的点数范围（如 `+1～3`、`+1～6`、`+3`、`+5` 等），攻击牌以红字展示、防御牌以蓝字展示；悬停放大或拖拽出牌时自适应跟随卡面缩放与旋转。
+- **已出牌实际点数**：双方打出战斗牌后，在战斗窗口两侧（攻方在左、防方在右）直接展示对应卡牌，并在每张卡牌上方展示服务器已同步的实际点数（如 `+4`）。
+- **界面清爽**：无需右侧文字面板，所有点数信息均附着于卡牌上方直观显示。
+- **旁观兼容**：支持在旁观其他玩家战斗时同步展示出牌点数。
 
 ## 运行环境与配置
 
 目标加载器：CesiumLoader 2.9.1。目标框架：.NET Standard 2.0。
 
-编辑模组目录下的 `config.json`，或使用工具箱提供的模组配置表单。
+编辑模组目录下的 `config.json`，或在 AstralParty.Toys 的模组配置页修改：
 
 | 配置 | 默认值 | 作用 |
 | --- | --- | --- |
 | Enabled | true | 总开关 |
-| ShowForOthers | true | 显示旁观战斗 |
-| ShowCardDetails | true | 显示每张牌的点数 |
-| FontSize | 28 | 字号，14～60 |
-| Anchor | right-center | 面板位置 |
-| OffsetX / OffsetY | 0 | 水平、垂直位置偏移 |
-
-Anchor 支持 `right-center`、`left-center`、`top-left`、`top-center`、`top-right`。
+| ShowForOthers | true | 显示其他玩家战斗中的已出牌点数 |
+| ShowHandPoints | true | 在手牌上方显示未打出的战斗牌点数范围 |
+| ShowPlayedPoints | true | 在已打出的战斗牌上方显示服务器同步的实际点数 |
+| FontSize | 26 | 点数字号，范围 16～48 |
+| OffsetX / OffsetY | 0 | 已出牌展示区域的水平、垂直位置偏移 |
 
 ## 从源码构建
 
@@ -67,6 +62,12 @@ pwsh -NoProfile -File tools\fetch-refs.ps1 -Source C:\path\to\CesiumLoader
 dotnet build ./source/BattleCardPointsMod.csproj -c Release
 ```
 
+运行单元测试：
+
+```powershell
+dotnet test ./tests/BattleCardPointsMod.Tests/BattleCardPointsMod.Tests.csproj
+```
+
 产物在 `source\bin\Release\netstandard2.0\`，取 `BattleCardPointsMod.dll`、`BattleCardPointsMod.json`（以及可选的 `.pdb`）放进 `mods\BattleCardPointsMod\` 即可。自备游戏程序集时可用 `CESIUM_GAME_REFS` 环境变量或 `-p:GameRefsDir=` 指定目录。
 
 ## 发布
@@ -75,4 +76,4 @@ dotnet build ./source/BattleCardPointsMod.csproj -c Release
 
 ## 许可证与来源
 
-采用 [GNU AGPL v3](LICENSE)。覆盖层实现改编自 [CesiumLoader / CombatOddsMod](https://github.com/higashitaniyume/CesiumLoader)，完整来源说明见 [NOTICE.md](NOTICE.md)。
+采用 [GNU AGPL v3](LICENSE)。完整来源说明见 [NOTICE.md](NOTICE.md)。
