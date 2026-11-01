@@ -1,5 +1,16 @@
-**/bin/
-**/obj/
-.vs/
+# 构建产物
+bin/
+obj/
 *.user
 *.suo
+.vs/
+
+# 编译期引用(由 tools\fetch-refs.ps1 释放, 不入库)
+refs/
+
+# 本地打包中间产物
+artifacts/
+staging/
+BattleCardPointsMod.zip
+BattleCardPointsMod-*.zip
+!BattleCardPointsMod-v1.0.1.zip

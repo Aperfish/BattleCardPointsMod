@@ -1,0 +1,126 @@
+name: Release
+
+# 推送 v* 标签时: 准备引用程序集 → 编译 → 打包 → 创建 Release。
+# 包内布局为 Mods 目录式: zip 根目录下是 BattleCardPointsMod\ 文件夹,
+# 解压到 AstralParty_ModLoader\mods\ 即得到 mods\BattleCardPointsMod\。
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  # 编译所需的 CesiumLoader.SDK 与游戏程序集从该 tag 取得
+  CESIUM_LOADER_REF: modloader-2.9.1
+
+jobs:
+  build:
+    name: Build and package
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Prepare reference assemblies
+        shell: pwsh
+        run: pwsh -NoProfile -File tools/fetch-refs.ps1 -CesiumLoaderRef $env:CESIUM_LOADER_REF
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_type }}" -eq "tag") {
+            $version = "${{ github.ref_name }}" -replace '^v', ''
+          } else {
+            $version = "manual-${{ github.run_number }}"
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "version=$version"
+
+      - name: Verify sidecar version
+        shell: pwsh
+        run: |
+          # 标签版本与 sidecar 不一致时, 运行时 ExportSidecar 会把 json 改回源码里的版本
+          if ("${{ github.ref_type }}" -ne "tag") { Write-Host "手动构建, 跳过标签校验"; exit 0 }
+          $sidecar = Get-Content BattleCardPointsMod.json -Raw | ConvertFrom-Json
+          if ($sidecar.version -ne "${{ steps.version.outputs.version }}") {
+            throw "标签版本 ${{ steps.version.outputs.version }} 与 BattleCardPointsMod.json 的 version $($sidecar.version) 不一致"
+          }
+
+      - name: Build
+        shell: pwsh
+        run: |
+          dotnet build source/BattleCardPointsMod.csproj -c Release --nologo
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Stage package
+        shell: pwsh
+        run: |
+          $out = "source/bin/Release/netstandard2.0"
+          $stage = "staging/BattleCardPointsMod"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          foreach ($file in @("BattleCardPointsMod.dll", "BattleCardPointsMod.pdb")) {
+            $path = Join-Path $out $file
+            if (-not (Test-Path $path)) { throw "缺少构建产物: $path" }
+            Copy-Item $path $stage -Force
+          }
+          Copy-Item "BattleCardPointsMod.json" $stage -Force
+
+          $zip = "BattleCardPointsMod-${{ steps.version.outputs.version }}.zip"
+          Compress-Archive -Path staging/BattleCardPointsMod -DestinationPath $zip -CompressionLevel Optimal
+          Copy-Item $zip "BattleCardPointsMod.zip" -Force
+          Get-ChildItem *.zip | Select-Object Name, Length
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: battle-card-points-package
+          path: BattleCardPointsMod*.zip
+          if-no-files-found: error
+          retention-days: 1
+
+  release:
+    name: Create release
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download package
+        uses: actions/download-artifact@v4
+        with:
+          name: battle-card-points-package
+          path: artifacts
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: 战斗牌点数显示 ${{ github.ref_name }}
+          files: artifacts/*.zip
+          fail_on_unmatched_files: true
+          body: |
+            ## 安装
+
+            1. 下载本页附件里的 `BattleCardPointsMod-<版本>.zip`（或固定地址 `BattleCardPointsMod.zip`）。
+            2. 解压到游戏 exe 目录下的 `AstralParty_ModLoader\mods\`，得到 `mods\BattleCardPointsMod\BattleCardPointsMod.dll` 与 `BattleCardPointsMod.json`。
+            3. 重启游戏。已有旧版本时，覆盖更新即可。
+
+            需要 CesiumLoader（SDK 不低于 2.9.1）。卸载时删除 `mods\BattleCardPointsMod\` 目录。
+
+            ## 说明
+
+            - 战斗界面右侧显示双方实时攻防与已同步的判定骰点数。
+            - 显示服务器快照中每张战斗牌的具体点数，支持重复牌、0点和负数。
+            - 每张牌独占一行，长文本自动换行，文本区域随内容增高。
+            - 配置位于 `mods\BattleCardPointsMod\config.json`，也可在 AstralParty.Toys 的模组配置页修改。
+            - 完整说明与配置项见仓库 [README](https://github.com/higashitaniyume/BattleCardPointsMod#readme)。
