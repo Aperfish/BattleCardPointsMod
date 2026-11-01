@@ -10,7 +10,7 @@ using Core.Net;
 using Cysharp.Threading.Tasks;
 using party.model;
 
-[assembly: ModManifest("战斗牌点数显示", "1.0.1", "LocalMod",
+[assembly: ModManifest("战斗牌点数显示", "1.0.2", "Aperfish",
     "使用战斗牌后实时显示服务器已同步的攻击、防御和判定骰点数。",
     Permissions = ModPermission.ReadGameState, SdkVersion = "2.9.1")]
 

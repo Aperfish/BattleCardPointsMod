@@ -1,0 +1,5 @@
+# 统一行尾，避免 Windows 检出后脚本/工作流出现整文件 diff
+* text=auto
+*.ps1 text eol=crlf
+*.cs text eol=crlf
+*.yml text eol=lf

@@ -2,13 +2,23 @@
 
 用于《吉星派对》（Astral Party）的 CesiumLoader 模组，基于 CombatOddsMod 的战斗覆盖层实现。可与原战斗胜率助手同时使用。
 
-## 下载与安装
+## 安装
 
-下载仓库中的 [BattleCardPointsMod-v1.0.1.zip](BattleCardPointsMod-v1.0.1.zip)，解压后，将整个 `BattleCardPointsMod` 文件夹放入游戏目录的 `AstralParty_ModLoader/mods/`。
+1. 下载本仓库 [Releases](https://github.com/Aperfish/BattleCardPointsMod/releases) 里的 `BattleCardPointsMod-<版本>.zip`（或固定地址 `BattleCardPointsMod.zip`）。
+2. 解压到游戏 exe 目录下的 `AstralParty_ModLoader\mods\`，得到：
 
-最终文件位置应为 `AstralParty_ModLoader/mods/BattleCardPointsMod/BattleCardPointsMod.dll`。关闭游戏后安装或更新，然后重新启动。
+   ```text
+   AstralParty_ModLoader\
+     mods\
+       BattleCardPointsMod\
+         BattleCardPointsMod.dll
+         BattleCardPointsMod.json
+         BattleCardPointsMod.pdb   (可选，用于把日志里的堆栈还原成源码行号)
+   ```
 
-已有旧版本时，覆盖 DLL 和 `BattleCardPointsMod.json` 即可，保留原 `config.json` 可保留个人设置。
+3. 启动游戏。已有旧版本时覆盖更新即可，保留原 `config.json` 可保留个人设置。
+
+卸载时退出游戏，删除 `mods\BattleCardPointsMod\` 目录即可，不影响其他模组。
 
 ## 功能
 
@@ -39,13 +49,29 @@ Anchor 支持 `right-center`、`left-center`、`top-left`、`top-center`、`top-
 
 ## 从源码构建
 
-需要 .NET SDK、加载器中的 `sdk/CesiumLoader.SDK.dll`，以及对应版本的游戏引用程序集：`AstralParty.Runtime.dll`、`UnityEngine.CoreModule.dll`、`UniTask.dll`、`Google.Protobuf.Runtime.dll`。游戏引用程序集不包含在本仓库中。
+编译期引用的 `CesiumLoader.SDK.dll` 与游戏程序集不随仓库分发，需要先准备：
 
 ```powershell
-dotnet build ./source/BattleCardPointsMod.csproj -c Release -p:LoaderDir="加载器目录" -p:GameRefsDir="游戏引用程序集目录"
+pwsh -NoProfile -File tools\fetch-refs.ps1
 ```
 
-本版本已编译通过，未运行自动测试；v1.0.1 的显示调整尚未经过实机验证。
+脚本默认从 CesiumLoader 仓库与 Release 拉取，并按 `sources.json` 校验游戏程序集的 SHA256。已经在本机 clone 了 CesiumLoader 时，可以离线直接复制：
+
+```powershell
+pwsh -NoProfile -File tools\fetch-refs.ps1 -Source C:\path\to\CesiumLoader
+```
+
+随后编译：
+
+```powershell
+dotnet build ./source/BattleCardPointsMod.csproj -c Release
+```
+
+产物在 `source\bin\Release\netstandard2.0\`，取 `BattleCardPointsMod.dll`、`BattleCardPointsMod.json`（以及可选的 `.pdb`）放进 `mods\BattleCardPointsMod\` 即可。自备游戏程序集时可用 `CESIUM_GAME_REFS` 环境变量或 `-p:GameRefsDir=` 指定目录。
+
+## 发布
+
+推送 `v*` 标签会触发 GitHub Actions：准备引用程序集、编译、打包成含 `BattleCardPointsMod\` 目录的 zip，并创建对应版本的 Release。标签版本必须与 `BattleCardPointsMod.json` 的 `version` 一致。
 
 ## 许可证与来源
 
