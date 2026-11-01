@@ -1,0 +1,18 @@
+{
+  "Enabled": true,
+  "ShowForOthers": true,
+  "ShowCardDetails": true,
+  "FontSize": 28,
+  "Anchor": "right-center",
+  "OffsetX": 0,
+  "OffsetY": 0,
+  "_comments": {
+    "Enabled": "点数显示总开关。",
+    "ShowForOthers": "显示其他玩家的战斗点数。",
+    "ShowCardDetails": "显示服务器已同步的每张战斗牌具体点数；未下发时显示等待同步。",
+    "FontSize": "文字大小，14～60，默认28。",
+    "Anchor": "面板位置：right-center / left-center / top-left / top-center / top-right。",
+    "OffsetX": "水平偏移，正数向右。",
+    "OffsetY": "垂直偏移，正数向下。"
+  }
+}

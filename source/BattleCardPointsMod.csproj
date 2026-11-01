@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>BattleCardPointsMod</AssemblyName>
+    <Version>1.0.1</Version>
+    <LoaderDir Condition="'$(LoaderDir)' == ''">$(MSBuildThisFileDirectory)../../AstralParty_ModLoader</LoaderDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="CesiumLoader.SDK"><HintPath>$(LoaderDir)/sdk/CesiumLoader.SDK.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="AstralParty.Runtime"><HintPath>$(GameRefsDir)/AstralParty.Runtime.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>$(GameRefsDir)/UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UniTask"><HintPath>$(GameRefsDir)/UniTask.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Google.Protobuf.Runtime"><HintPath>$(GameRefsDir)/Google.Protobuf.Runtime.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>
