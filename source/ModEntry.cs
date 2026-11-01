@@ -10,7 +10,7 @@ using UI;
 using UnityEngine;
 
 [assembly: ModManifest("战斗牌点数显示", "1.0.3", "Aperfish",
-    "在每张战斗牌上方直接显示点数（手牌上方显示预估点数范围，打出后显示实际点数）。",
+    "在每张战斗牌上方直接显示点数，并在战斗窗口两侧展示最终攻击与防御数值。",
     Permissions = ModPermission.ReadGameState, SdkVersion = "2.9.1")]
 
 namespace BattleCardPointsMod
@@ -33,6 +33,10 @@ namespace BattleCardPointsMod
         private float _offsetX = 0f;
         private float _offsetY = 0f;
 
+        private long _lastBattleId;
+        private int _attackerDice = -1;
+        private int _defenderDice = -1;
+
         private bool _dirty;
         private float _nextRefresh;
         private string _lastError;
@@ -46,13 +50,14 @@ namespace BattleCardPointsMod
 
             GameEvents.BattleUpdate += OnBattle;
             GameEvents.BattlePhaseChanged += OnPhase;
+            GameEvents.BattleDice += OnDice;
             GameEvents.CardUsed += OnCard;
             GameEvents.EffectCardUsed += OnCard;
             GameEvents.QuickCardUsed += OnCard;
 
             Context.RegisterCleanup(Unsubscribe);
             GameEvents.StartAutoHook();
-            SdkLog.Info("BattleCardPoints", "已启用：在每张战斗牌上方直接显示点数。");
+            SdkLog.Info("BattleCardPoints", "已启用：在每张战斗牌上方显示点数并展示最终攻击与防御。");
         }
 
         public override void OnConfigChanged()
@@ -70,11 +75,31 @@ namespace BattleCardPointsMod
 
         private void OnBattle(Battle b)
         {
+            if (b != null && b.BattleId != _lastBattleId)
+            {
+                _lastBattleId = b.BattleId;
+                _attackerDice = -1;
+                _defenderDice = -1;
+            }
             _dirty = true;
         }
 
         private void OnPhase(Battle b, BattlePhase phase)
         {
+            _dirty = true;
+        }
+
+        private void OnDice(long playerId, int point)
+        {
+            if (point < 0) return;
+            var live = SimpleSingletonProvider<GameLogicManager>.inst?.fight?.battleFightData;
+            if (live != null)
+            {
+                if (live.attackerInfo != null && playerId == live.attackerInfo.PlayerId)
+                    _attackerDice = point;
+                else if (live.defenderInfo != null && playerId == live.defenderInfo.PlayerId)
+                    _defenderDice = point;
+            }
             _dirty = true;
         }
 
@@ -110,10 +135,17 @@ namespace BattleCardPointsMod
                 // 1. 手牌上方点数预估范围
                 _handBadges.UpdateBadges(fightWin, _showHandPoints, _fontSize);
 
-                // 2. 已打出卡牌上方实际点数
+                // 2. 双方最终数值标头与已打出卡牌
                 var live = SimpleSingletonProvider<GameLogicManager>.inst?.fight?.battleFightData;
                 if (live != null && !live.isEnd && live.attackerInfo != null && live.defenderInfo != null)
                 {
+                    if (live.battleId != _lastBattleId)
+                    {
+                        _lastBattleId = live.battleId;
+                        _attackerDice = -1;
+                        _defenderDice = -1;
+                    }
+
                     if (!_showForOthers && !Players.IsSelf(live.attackerInfo.PlayerId) && !Players.IsSelf(live.defenderInfo.PlayerId))
                     {
                         _playedOverlay.Hide();
@@ -121,7 +153,8 @@ namespace BattleCardPointsMod
                     else
                     {
                         var pane = fightWin.contentPane as UIFightWindow;
-                        _playedOverlay.Update(pane, live.attackerInfo, live.defenderInfo, _showPlayedPoints, _fontSize, _offsetX, _offsetY);
+                        _playedOverlay.Update(pane, live.attackerInfo, live.defenderInfo, _attackerDice, _defenderDice,
+                            _showPlayedPoints, _fontSize, _offsetX, _offsetY);
                     }
                 }
                 else
@@ -146,6 +179,7 @@ namespace BattleCardPointsMod
         {
             GameEvents.BattleUpdate -= OnBattle;
             GameEvents.BattlePhaseChanged -= OnPhase;
+            GameEvents.BattleDice -= OnDice;
             GameEvents.CardUsed -= OnCard;
             GameEvents.EffectCardUsed -= OnCard;
             GameEvents.QuickCardUsed -= OnCard;

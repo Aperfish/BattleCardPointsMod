@@ -1,7 +1,6 @@
 using System;
 using System.Text;
 using FairyGUI;
-using Google.Protobuf.Collections;
 using party.model;
 using Tools;
 using UI;
@@ -14,6 +13,8 @@ namespace BattleCardPointsMod
         private const float CardW = 86f;
         private const float CardH = 120f;
         private const float Gap = 12f;
+        private const float HeaderH = 36f;
+        private const float CardsY = 74f;
 
         private GComponent _atkRoot;
         private GComponent _defRoot;
@@ -21,7 +22,9 @@ namespace BattleCardPointsMod
         private string _lastDefSig;
         private object _lastPane;
 
-        public void Update(UIFightWindow pane, BattleRole attacker, BattleRole defender, bool enabled, int fontSize, float offsetX, float offsetY)
+        public void Update(UIFightWindow pane, BattleRole attacker, BattleRole defender,
+            int attackerDice, int defenderDice,
+            bool enabled, int fontSize, float offsetX, float offsetY)
         {
             if (pane == null || !enabled)
             {
@@ -31,11 +34,11 @@ namespace BattleCardPointsMod
 
             EnsureRoots(pane);
 
-            // Update attacker played cards
-            UpdateSide(_atkRoot, attacker, isAtk: true, fontSize, ref _lastAtkSig);
+            // Update attacker (left side)
+            UpdateSide(_atkRoot, attacker, isAtk: true, attackerDice, fontSize, ref _lastAtkSig);
 
-            // Update defender played cards
-            UpdateSide(_defRoot, defender, isAtk: false, fontSize, ref _lastDefSig);
+            // Update defender (right side)
+            UpdateSide(_defRoot, defender, isAtk: false, defenderDice, fontSize, ref _lastDefSig);
 
             // Position containers on screen
             PositionRoots(pane, offsetX, offsetY);
@@ -72,7 +75,7 @@ namespace BattleCardPointsMod
             float paneW = pane.width > 0 ? pane.width : 1920f;
             float paneH = pane.height > 0 ? pane.height : 1080f;
 
-            float y = paneH * 0.38f + offsetY;
+            float y = paneH * 0.36f + offsetY;
 
             // Attacker on left side
             if (_atkRoot != null && _atkRoot.visible)
@@ -88,17 +91,18 @@ namespace BattleCardPointsMod
             }
         }
 
-        private void UpdateSide(GComponent root, BattleRole role, bool isAtk, int fontSize, ref string lastSig)
+        private void UpdateSide(GComponent root, BattleRole role, bool isAtk, int fallbackDice, int fontSize, ref string lastSig)
         {
             if (root == null) return;
-            if (role == null || (role.CardCombatBonus.Count == 0 && role.UseCards.Count == 0))
+            if (role == null)
             {
                 root.visible = false;
                 lastSig = null;
                 return;
             }
 
-            string sig = BuildSignature(role, fontSize);
+            int dice = role.Point > 0 ? role.Point : (fallbackDice > 0 ? fallbackDice : 0);
+            string sig = BuildSignature(role, dice, fontSize);
             if (sig == lastSig) return;
             lastSig = sig;
 
@@ -106,38 +110,125 @@ namespace BattleCardPointsMod
 
             var bonusList = role.CardCombatBonus;
             var useCards = role.UseCards;
-            int count = Math.Max(bonusList.Count, useCards.Count);
-            if (count == 0)
+            int cardCount = Math.Max(bonusList.Count, useCards.Count);
+
+            float cardsWidth = cardCount > 0 ? (cardCount * CardW + (cardCount - 1) * Gap) : 0f;
+            float totalW = Math.Max(230f, cardsWidth);
+
+            // 1. 最终数值标头（最终攻击 / 最终防御）
+            var headerBox = new GComponent { touchable = false };
+            headerBox.SetSize(totalW, HeaderH);
+
+            var headerBg = new GGraph { touchable = false };
+            headerBg.SetSize(totalW, HeaderH);
+            Color bgColor = new Color(0.08f, 0.09f, 0.14f, 0.88f);
+            headerBg.DrawRoundRect(totalW, HeaderH, bgColor, new float[] { 6f, 6f, 6f, 6f });
+            headerBox.AddChild(headerBg);
+
+            string headerText = FormatHeaderText(role, isAtk, dice);
+            var headerLabel = new GTextField
             {
-                root.visible = false;
-                return;
+                touchable = false,
+                autoSize = AutoSizeType.None,
+                align = AlignType.Center,
+                verticalAlign = VertAlignType.Middle,
+                stroke = 2f,
+                strokeColor = Color.black,
+                UBBEnabled = true
+            };
+            headerLabel.textFormat.size = Math.Max(18, fontSize - 6);
+            headerLabel.textFormat.bold = true;
+            headerLabel.SetSize(totalW, HeaderH);
+            headerLabel.text = headerText;
+            headerBox.AddChild(headerLabel);
+
+            root.AddChild(headerBox);
+
+            // 2. 如果打出了卡牌，在标头下方横向展示卡牌及其具体点数
+            if (cardCount > 0)
+            {
+                float currentX = (totalW - cardsWidth) * 0.5f;
+                for (int i = 0; i < cardCount; i++)
+                {
+                    int cardId = 0;
+                    int? bonus = null;
+
+                    if (i < bonusList.Count)
+                    {
+                        cardId = bonusList[i].CardId;
+                        bonus = bonusList[i].CardBonus;
+                    }
+                    else if (i < useCards.Count)
+                    {
+                        cardId = useCards[i];
+                    }
+
+                    var item = CreateCardItem(cardId, bonus, role.PlayerId, isAtk, fontSize);
+                    item.SetXY(currentX, CardsY);
+                    root.AddChild(item);
+
+                    currentX += CardW + Gap;
+                }
+
+                root.SetSize(totalW, CardsY + CardH + 10f);
+            }
+            else
+            {
+                root.SetSize(totalW, HeaderH);
             }
 
-            float currentX = 0f;
-            for (int i = 0; i < count; i++)
-            {
-                int cardId = 0;
-                int? bonus = null;
-
-                if (i < bonusList.Count)
-                {
-                    cardId = bonusList[i].CardId;
-                    bonus = bonusList[i].CardBonus;
-                }
-                else if (i < useCards.Count)
-                {
-                    cardId = useCards[i];
-                }
-
-                var item = CreateCardItem(cardId, bonus, role.PlayerId, isAtk, fontSize);
-                item.SetXY(currentX, 0f);
-                root.AddChild(item);
-
-                currentX += CardW + Gap;
-            }
-
-            root.SetSize(Math.Max(CardW, currentX - Gap), CardH + 40f);
             root.visible = true;
+        }
+
+        private static string FormatHeaderText(BattleRole role, bool isAtk, int dice)
+        {
+            if (isAtk)
+            {
+                int cardBonusSum = 0;
+                foreach (var c in role.CardCombatBonus) cardBonusSum += c.CardBonus;
+
+                int finalAtk = role.Atk > 0 ? role.Atk : (dice > 0 ? role.InitAtk + cardBonusSum + dice : 0);
+                if (dice > 0 && finalAtk > 0)
+                {
+                    return $"[b]最终攻击：[/b][color=#FFD56A][b]{finalAtk}[/b][/color]  [size=16][color=#DDDDDD](判定骰 {dice})[/color][/size]";
+                }
+
+                if (role.MinAtk > 0 || role.MaxAtk > 0)
+                {
+                    if (role.MinAtk != role.MaxAtk)
+                        return $"[b]最终攻击：[/b][color=#FFD56A][b]{role.MinAtk}～{role.MaxAtk}[/b][/color]  [size=16][color=#DDDDDD](未投骰)[/color][/size]";
+                    return $"[b]最终攻击：[/b][color=#FFD56A][b]{role.MinAtk}[/b][/color]";
+                }
+
+                return $"[b]当前攻击：[/b][color=#FFD56A][b]{role.Atk}[/b][/color]";
+            }
+            else
+            {
+                if (role.Dodge)
+                {
+                    if (dice > 0)
+                        return $"[b]闪避判定：[/b][color=#5CD6FF][b]🎲 {dice}[/b][/color]";
+                    return $"[b]防守方式：[/b][color=#5CD6FF][b]闪避[/b][/color]  [size=16][color=#DDDDDD](未投骰)[/color][/size]";
+                }
+
+                int cardBonusSum = 0;
+                foreach (var c in role.CardCombatBonus) cardBonusSum += c.CardBonus;
+
+                int finalDef = role.Def > 0 ? role.Def : (dice > 0 ? role.InitDef + cardBonusSum + dice : 0);
+                if (dice > 0 && finalDef > 0)
+                {
+                    return $"[b]最终防御：[/b][color=#5CD6FF][b]{finalDef}[/b][/color]  [size=16][color=#DDDDDD](判定骰 {dice})[/color][/size]";
+                }
+
+                if (role.MinDef > 0 || role.MaxDef > 0)
+                {
+                    if (role.MinDef != role.MaxDef)
+                        return $"[b]最终防御：[/b][color=#5CD6FF][b]{role.MinDef}～{role.MaxDef}[/b][/color]  [size=16][color=#DDDDDD](未投骰)[/color][/size]";
+                    return $"[b]最终防御：[/b][color=#5CD6FF][b]{role.MinDef}[/b][/color]";
+                }
+
+                return $"[b]当前防御：[/b][color=#5CD6FF][b]{role.Def}[/b][/color]";
+            }
         }
 
         private GComponent CreateCardItem(int cardId, int? bonus, long playerId, bool isAtk, int fontSize)
@@ -145,7 +236,7 @@ namespace BattleCardPointsMod
             var item = new GComponent { touchable = false };
             item.SetSize(CardW, CardH);
 
-            // 1. Try native UICom_Card, fallback to stylish block
+            // 1. 尝试原生 UICom_Card 渲染，异常时降级纯色卡牌
             bool nativeRendered = false;
             try
             {
@@ -192,7 +283,7 @@ namespace BattleCardPointsMod
                 item.AddChild(nameLabel);
             }
 
-            // 2. Point badge on top of the card
+            // 2. 卡牌上方的实际点数标签
             var badge = new GTextField
             {
                 name = "badge",
@@ -213,18 +304,27 @@ namespace BattleCardPointsMod
                 : "...";
             badge.text = $"[color={color}][b]{text}[/b][/color]";
 
-            badge.SetSize(CardW, 36f);
-            badge.SetXY(0f, -36f);
+            badge.SetSize(CardW, 34f);
+            badge.SetXY(0f, -34f);
             item.AddChild(badge);
 
             return item;
         }
 
-        private static string BuildSignature(BattleRole role, int fontSize)
+        private static string BuildSignature(BattleRole role, int dice, int fontSize)
         {
             if (role == null) return string.Empty;
             var sb = new StringBuilder();
-            sb.Append(role.PlayerId).Append(';').Append(fontSize).Append(';');
+            sb.Append(role.PlayerId).Append(';')
+              .Append(role.Atk).Append(';')
+              .Append(role.Def).Append(';')
+              .Append(role.MinAtk).Append(';')
+              .Append(role.MaxAtk).Append(';')
+              .Append(role.MinDef).Append(';')
+              .Append(role.MaxDef).Append(';')
+              .Append(dice).Append(';')
+              .Append(role.Dodge ? 1 : 0).Append(';')
+              .Append(fontSize).Append(';');
             for (int i = 0; i < role.UseCards.Count; i++)
                 sb.Append(role.UseCards[i]).Append(',');
             sb.Append('|');

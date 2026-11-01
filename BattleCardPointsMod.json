@@ -1,1 +1,1 @@
-{"id":"BattleCardPointsMod","name":"战斗牌点数显示","version":"1.0.3","author":"Aperfish","description":"在每张战斗牌上方直接显示点数（手牌上方显示预估点数范围，打出后显示实际点数）。","permissions":1,"sdkVersion":"2.9.1","dependencies":[]}
+{"id":"BattleCardPointsMod","name":"战斗牌点数显示","version":"1.0.3","author":"Aperfish","description":"在每张战斗牌上方直接显示点数，并在战斗窗口两侧展示最终攻击与防御数值。","permissions":1,"sdkVersion":"2.9.1","dependencies":[]}
