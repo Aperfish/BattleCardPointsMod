@@ -12,7 +12,7 @@ using Tools;
 using UI;
 using UnityEngine;
 
-[assembly: ModManifest("战斗牌点数显示", "1.0.3", "Aperfish",
+[assembly: ModManifest("战斗牌点数显示", "1.1.0", "Aperfish",
     "在每张战斗牌上方直接显示点数，并在战斗窗口两侧展示最终攻击与防御数值。",
     Permissions = ModPermission.ReadGameState, SdkVersion = "2.9.1")]
 
