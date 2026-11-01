@@ -71,7 +71,7 @@ dotnet build ./source/BattleCardPointsMod.csproj -c Release
 
 ## 发布
 
-推送 `v*` 标签会触发 GitHub Actions：准备引用程序集、编译、打包成含 `BattleCardPointsMod\` 目录的 zip，并创建对应版本的 Release。标签版本必须与 `BattleCardPointsMod.json` 的 `version` 一致。
+推送 `v*` 标签，或在 `main` 更新版本清单/发布工作流，都会触发 GitHub Actions：准备引用程序集、编译、打包成含 `BattleCardPointsMod\` 目录的 zip，并创建对应版本的 Release。主分支发布从 `BattleCardPointsMod.json` 读取版本并生成 `v<版本>` 标签；显式推送的标签版本必须与清单一致。安装包包含 DLL、PDB、模组清单、默认配置和许可证。手动运行工作流仅生成构建附件。
 
 ## 许可证与来源
 
