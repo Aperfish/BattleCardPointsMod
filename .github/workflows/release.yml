@@ -1,10 +1,15 @@
 name: Release
 
-# 推送 v* 标签时: 准备引用程序集 → 编译 → 打包 → 创建 Release。
+# 推送 v* 标签或在 main 更新版本/发布工作流时构建发布。
 # 包内布局为 Mods 目录式: zip 根目录下是 BattleCardPointsMod\ 文件夹,
 # 解压到 AstralParty_ModLoader\mods\ 即得到 mods\BattleCardPointsMod\。
 on:
   push:
+    branches:
+      - main
+    paths:
+      - BattleCardPointsMod.json
+      - .github/workflows/release.yml
     tags:
       - "v*"
   workflow_dispatch:
@@ -20,6 +25,9 @@ jobs:
   build:
     name: Build and package
     runs-on: windows-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
 
     steps:
       - name: Check out source
@@ -40,17 +48,20 @@ jobs:
         run: |
           if ("${{ github.ref_type }}" -eq "tag") {
             $version = "${{ github.ref_name }}" -replace '^v', ''
+          } elseif ("${{ github.event_name }}" -eq "push") {
+            $version = (Get-Content BattleCardPointsMod.json -Raw | ConvertFrom-Json).version
           } else {
             $version = "manual-${{ github.run_number }}"
           }
           "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=v$version" >> $env:GITHUB_OUTPUT
           Write-Host "version=$version"
 
       - name: Verify sidecar version
         shell: pwsh
         run: |
           # 标签版本与 sidecar 不一致时, 运行时 ExportSidecar 会把 json 改回源码里的版本
-          if ("${{ github.ref_type }}" -ne "tag") { Write-Host "手动构建, 跳过标签校验"; exit 0 }
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") { Write-Host "手动构建, 跳过标签校验"; exit 0 }
           $sidecar = Get-Content BattleCardPointsMod.json -Raw | ConvertFrom-Json
           if ($sidecar.version -ne "${{ steps.version.outputs.version }}") {
             throw "标签版本 ${{ steps.version.outputs.version }} 与 BattleCardPointsMod.json 的 version $($sidecar.version) 不一致"
@@ -74,6 +85,7 @@ jobs:
             Copy-Item $path $stage -Force
           }
           Copy-Item "BattleCardPointsMod.json" $stage -Force
+          Copy-Item config.json, LICENSE, NOTICE.md $stage -Force
 
           $zip = "BattleCardPointsMod-${{ steps.version.outputs.version }}.zip"
           Compress-Archive -Path staging/BattleCardPointsMod -DestinationPath $zip -CompressionLevel Optimal
@@ -90,7 +102,7 @@ jobs:
 
   release:
     name: Create release
-    if: github.ref_type == 'tag'
+    if: github.event_name == 'push'
     needs: build
     runs-on: ubuntu-latest
 
@@ -104,8 +116,9 @@ jobs:
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: 战斗牌点数显示 ${{ github.ref_name }}
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || needs.build.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: 战斗牌点数显示 ${{ needs.build.outputs.version }}
           files: artifacts/*.zip
           fail_on_unmatched_files: true
           body: |
