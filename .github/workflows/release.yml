@@ -123,4 +123,4 @@ jobs:
             - 显示服务器快照中每张战斗牌的具体点数，支持重复牌、0点和负数。
             - 每张牌独占一行，长文本自动换行，文本区域随内容增高。
             - 配置位于 `mods\BattleCardPointsMod\config.json`，也可在 AstralParty.Toys 的模组配置页修改。
-            - 完整说明与配置项见仓库 [README](https://github.com/higashitaniyume/BattleCardPointsMod#readme)。
+            - 完整说明与配置项见仓库 [README](${{ github.server_url }}/${{ github.repository }}#readme)。

@@ -4,7 +4,7 @@
 
 ## 安装
 
-1. 下载本仓库 [Releases](https://github.com/higashitaniyume/BattleCardPointsMod/releases) 里的 `BattleCardPointsMod-<版本>.zip`（或固定地址 `BattleCardPointsMod.zip`）。
+1. 下载本仓库 [Releases](https://github.com/Aperfish/BattleCardPointsMod/releases) 里的 `BattleCardPointsMod-<版本>.zip`（或固定地址 `BattleCardPointsMod.zip`）。
 2. 解压到游戏 exe 目录下的 `AstralParty_ModLoader\mods\`，得到：
 
    ```text
