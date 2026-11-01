@@ -57,5 +57,60 @@ namespace BattleCardPointsMod.Tests
             Assert.True(comments.ContainsKey("ShowHandPoints"));
             Assert.True(comments.ContainsKey("ShowPlayedPoints"));
         }
+
+        [Fact]
+        public void TestFormatHeaderText_AttackerBeforeAndAfterDice()
+        {
+            var role = new party.model.BattleRole
+            {
+                PlayerId = 1001,
+                InitAtk = 3,
+                Atk = 3
+            };
+            role.CardCombatBonus.Add(new party.model.cardCombat { CardId = 10001, CardBonus = 2 });
+
+            // Before dice: shows base attack and post-card value
+            string before = PlayedCardsOverlay.FormatHeaderText(role, isAtk: true, dice: -1);
+            Assert.Contains("攻击：[color=#FFD56A][b]3[/b][/color]  判定骰：未投", before);
+            Assert.Contains("牌后数值：[color=#FFD56A]5[/color]（未含判定骰）", before);
+
+            // After dice (e.g. 4): final attack becomes 3 + 2 + 4 = 9
+            string after = PlayedCardsOverlay.FormatHeaderText(role, isAtk: true, dice: 4);
+            Assert.Contains("攻击：[color=#FFD56A][b]9[/b][/color]  判定骰：[color=#FFD56A][b]4[/b][/color]", after);
+        }
+
+        [Fact]
+        public void TestFormatHeaderText_DefenderDefenseAndDodge()
+        {
+            var defRole = new party.model.BattleRole
+            {
+                PlayerId = 1002,
+                InitDef = 2,
+                Def = 2
+            };
+            defRole.CardCombatBonus.Add(new party.model.cardCombat { CardId = 10002, CardBonus = 3 });
+
+            // Defending before dice: 2 + 3 = 5
+            string defBefore = PlayedCardsOverlay.FormatHeaderText(defRole, isAtk: false, dice: -1);
+            Assert.Contains("防御：[color=#5CD6FF][b]2[/b][/color]  判定骰：未投", defBefore);
+            Assert.Contains("牌后数值：[color=#5CD6FF]5[/color]（未含判定骰）", defBefore);
+
+            // Defending after dice 3: 2 + 3 + 3 = 8
+            string defAfter = PlayedCardsOverlay.FormatHeaderText(defRole, isAtk: false, dice: 3);
+            Assert.Contains("防御：[color=#5CD6FF][b]8[/b][/color]  判定骰：[color=#5CD6FF][b]3[/b][/color]", defAfter);
+
+            // Dodge before dice
+            var dodgeRole = new party.model.BattleRole
+            {
+                PlayerId = 1002,
+                Dodge = true
+            };
+            string dodgeBefore = PlayedCardsOverlay.FormatHeaderText(dodgeRole, isAtk: false, dice: -1);
+            Assert.Equal("闪避  判定骰：未投", dodgeBefore);
+
+            // Dodge after dice 6
+            string dodgeAfter = PlayedCardsOverlay.FormatHeaderText(dodgeRole, isAtk: false, dice: 6);
+            Assert.Equal("闪避  判定骰：[color=#5CD6FF][b]6[/b][/color]", dodgeAfter);
+        }
     }
 }

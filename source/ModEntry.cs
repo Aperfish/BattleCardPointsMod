@@ -1,8 +1,11 @@
 using System;
+using System.Reflection;
 using CesiumLoader.SDK.Gameplay;
 using CesiumLoader.SDK.Logging;
 using CesiumLoader.SDK.Manifests;
 using CesiumLoader.SDK.Mods;
+using Core.Net;
+using Cysharp.Threading.Tasks;
 using GameLogic;
 using party.model;
 using Tools;
@@ -22,6 +25,9 @@ namespace BattleCardPointsMod
 
     public sealed class PointsMod : ModBase
     {
+        private static readonly FieldInfo FightWindowField =
+            typeof(UIManager).GetField("_cachedFightWindow", BindingFlags.Instance | BindingFlags.NonPublic);
+
         private readonly HandCardBadgeManager _handBadges = new HandCardBadgeManager();
         private readonly PlayedCardsOverlay _playedOverlay = new PlayedCardsOverlay();
 
@@ -36,6 +42,11 @@ namespace BattleCardPointsMod
         private long _lastBattleId;
         private int _attackerDice = -1;
         private int _defenderDice = -1;
+
+        private BattleChoiceS2CRPC _choiceRpc;
+        private BattleChoiceS2CRPC.OnBattleChoiceS2CServerDelegate _choiceBefore;
+        private BattleChoiceS2CRPC.OnBattleChoiceS2CServerDelegate _choiceWrapper;
+        private float _nextHook;
 
         private bool _dirty;
         private float _nextRefresh;
@@ -81,6 +92,10 @@ namespace BattleCardPointsMod
                 _attackerDice = -1;
                 _defenderDice = -1;
             }
+            if (GameEvents.AttackerPoint >= 0)
+                _attackerDice = GameEvents.AttackerPoint;
+            if (b != null && b.Defender != null && b.Defender.Point > 0)
+                _defenderDice = b.Defender.Point;
             _dirty = true;
         }
 
@@ -108,23 +123,74 @@ namespace BattleCardPointsMod
             _dirty = true;
         }
 
+        private void EnsureChoiceHook()
+        {
+            var rpc = MonoSingletonProvider<NetManager>.inst?.RPC?.BattleChoiceS2C;
+            if (rpc == null) return;
+            var before = rpc.OnBattleChoiceS2CServerCallBackAsync;
+            if (before == null || ReferenceEquals(before, _choiceWrapper)) return;
+            BattleChoiceS2CRPC.OnBattleChoiceS2CServerDelegate wrapper = (model, error, dispatch) =>
+            {
+                try
+                {
+                    var live = SimpleSingletonProvider<GameLogicManager>.inst?.fight?.battleFightData;
+                    if (error == 0 && model != null && live != null && live.defenderInfo != null &&
+                        model.PlayerId == live.defenderInfo.PlayerId)
+                    {
+                        _defenderDice = model.Val;
+                        _dirty = true;
+                    }
+                }
+                catch { }
+                return before(model, error, dispatch);
+            };
+            _choiceRpc = rpc;
+            _choiceBefore = before;
+            _choiceWrapper = wrapper;
+            rpc.OnBattleChoiceS2CServerCallBackAsync = wrapper;
+        }
+
         public override void OnUpdate()
         {
+            float now = Time.unscaledTime;
+            if (now >= _nextHook)
+            {
+                _nextHook = now + 1f;
+                try { EnsureChoiceHook(); } catch { }
+            }
+
             if (!_enabled)
             {
                 _playedOverlay.Hide();
                 return;
             }
 
-            float now = Time.unscaledTime;
             if (!_dirty && now < _nextRefresh) return;
             _dirty = false;
             _nextRefresh = now + 0.08f;
 
             try
             {
+                // 1. 严格守卫：只有实际处于战斗状态中才检查 FightWindow，绝不在切地图或大厅中触发实例化导致黑屏
+                var fight = SimpleSingletonProvider<GameLogicManager>.inst?.fight;
+                if (fight == null || !fight.fightStatus)
+                {
+                    _playedOverlay.Hide();
+                    return;
+                }
+
                 FightWindow fightWin = null;
-                try { fightWin = UIManager.inst?.Fight; } catch { }
+                try
+                {
+                    var uiMgr = SimpleSingletonProvider<UIManager>.inst;
+                    if (uiMgr != null)
+                    {
+                        fightWin = FightWindowField != null
+                            ? FightWindowField.GetValue(uiMgr) as FightWindow
+                            : null;
+                    }
+                }
+                catch { }
 
                 if (fightWin == null || !fightWin.isShowing)
                 {
@@ -132,34 +198,38 @@ namespace BattleCardPointsMod
                     return;
                 }
 
-                // 1. 手牌上方点数预估范围
+                var live = fight.battleFightData;
+                if (live == null || live.isEnd || live.attackerInfo == null || live.defenderInfo == null)
+                {
+                    _playedOverlay.Hide();
+                    return;
+                }
+
+                if (live.battleId != _lastBattleId)
+                {
+                    _lastBattleId = live.battleId;
+                    _attackerDice = -1;
+                    _defenderDice = -1;
+                }
+
+                if (GameEvents.AttackerPoint >= 0)
+                    _attackerDice = GameEvents.AttackerPoint;
+                if (live.defenderInfo.Point > 0)
+                    _defenderDice = live.defenderInfo.Point;
+
+                // 2. 手牌上方点数预估范围
                 _handBadges.UpdateBadges(fightWin, _showHandPoints, _fontSize);
 
-                // 2. 双方最终数值标头与已打出卡牌
-                var live = SimpleSingletonProvider<GameLogicManager>.inst?.fight?.battleFightData;
-                if (live != null && !live.isEnd && live.attackerInfo != null && live.defenderInfo != null)
+                // 3. 双方最终数值标头与已打出卡牌
+                if (!_showForOthers && !Players.IsSelf(live.attackerInfo.PlayerId) && !Players.IsSelf(live.defenderInfo.PlayerId))
                 {
-                    if (live.battleId != _lastBattleId)
-                    {
-                        _lastBattleId = live.battleId;
-                        _attackerDice = -1;
-                        _defenderDice = -1;
-                    }
-
-                    if (!_showForOthers && !Players.IsSelf(live.attackerInfo.PlayerId) && !Players.IsSelf(live.defenderInfo.PlayerId))
-                    {
-                        _playedOverlay.Hide();
-                    }
-                    else
-                    {
-                        var pane = fightWin.contentPane as UIFightWindow;
-                        _playedOverlay.Update(pane, live.attackerInfo, live.defenderInfo, _attackerDice, _defenderDice,
-                            _showPlayedPoints, _fontSize, _offsetX, _offsetY);
-                    }
+                    _playedOverlay.Hide();
                 }
                 else
                 {
-                    _playedOverlay.Hide();
+                    var pane = fightWin.contentPane as UIFightWindow;
+                    _playedOverlay.Update(pane, live.attackerInfo, live.defenderInfo, _attackerDice, _defenderDice,
+                        _showPlayedPoints, _fontSize, _offsetX, _offsetY);
                 }
 
                 _lastError = null;
@@ -183,6 +253,12 @@ namespace BattleCardPointsMod
             GameEvents.CardUsed -= OnCard;
             GameEvents.EffectCardUsed -= OnCard;
             GameEvents.QuickCardUsed -= OnCard;
+
+            if (_choiceRpc != null && ReferenceEquals(_choiceRpc.OnBattleChoiceS2CServerCallBackAsync, _choiceWrapper))
+                _choiceRpc.OnBattleChoiceS2CServerCallBackAsync = _choiceBefore;
+            _choiceRpc = null;
+            _choiceWrapper = null;
+            _choiceBefore = null;
 
             _playedOverlay.Dispose();
         }

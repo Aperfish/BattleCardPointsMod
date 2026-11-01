@@ -13,8 +13,6 @@ namespace BattleCardPointsMod
         private const float CardW = 86f;
         private const float CardH = 120f;
         private const float Gap = 12f;
-        private const float HeaderH = 36f;
-        private const float CardsY = 74f;
 
         private GComponent _atkRoot;
         private GComponent _defRoot;
@@ -75,7 +73,7 @@ namespace BattleCardPointsMod
             float paneW = pane.width > 0 ? pane.width : 1920f;
             float paneH = pane.height > 0 ? pane.height : 1080f;
 
-            float y = paneH * 0.36f + offsetY;
+            float y = paneH * 0.35f + offsetY;
 
             // Attacker on left side
             if (_atkRoot != null && _atkRoot.visible)
@@ -91,7 +89,7 @@ namespace BattleCardPointsMod
             }
         }
 
-        private void UpdateSide(GComponent root, BattleRole role, bool isAtk, int fallbackDice, int fontSize, ref string lastSig)
+        private void UpdateSide(GComponent root, BattleRole role, bool isAtk, int dice, int fontSize, ref string lastSig)
         {
             if (root == null) return;
             if (role == null)
@@ -101,7 +99,6 @@ namespace BattleCardPointsMod
                 return;
             }
 
-            int dice = role.Point > 0 ? role.Point : (fallbackDice > 0 ? fallbackDice : 0);
             string sig = BuildSignature(role, dice, fontSize);
             if (sig == lastSig) return;
             lastSig = sig;
@@ -113,22 +110,26 @@ namespace BattleCardPointsMod
             int cardCount = Math.Max(bonusList.Count, useCards.Count);
 
             float cardsWidth = cardCount > 0 ? (cardCount * CardW + (cardCount - 1) * Gap) : 0f;
-            float totalW = Math.Max(230f, cardsWidth);
+            float totalW = Math.Max(260f, cardsWidth);
 
-            // 1. 最终数值标头（最终攻击 / 最终防御）
+            // 1. 最终数值标头（攻击/防御、判定骰、牌后范围/数值）
+            bool isDiceSettled = dice >= 0 || (!isAtk && role.Dodge);
+            float headerH = isDiceSettled ? 36f : 56f;
+
             var headerBox = new GComponent { touchable = false };
-            headerBox.SetSize(totalW, HeaderH);
+            headerBox.SetSize(totalW, headerH);
 
             var headerBg = new GGraph { touchable = false };
-            headerBg.SetSize(totalW, HeaderH);
-            Color bgColor = new Color(0.08f, 0.09f, 0.14f, 0.88f);
-            headerBg.DrawRoundRect(totalW, HeaderH, bgColor, new float[] { 6f, 6f, 6f, 6f });
+            headerBg.SetSize(totalW, headerH);
+            Color bgColor = new Color(0.06f, 0.08f, 0.12f, 0.90f);
+            headerBg.DrawRoundRect(totalW, headerH, bgColor, new float[] { 6f, 6f, 6f, 6f });
             headerBox.AddChild(headerBg);
 
             string headerText = FormatHeaderText(role, isAtk, dice);
             var headerLabel = new GTextField
             {
                 touchable = false,
+                singleLine = false,
                 autoSize = AutoSizeType.None,
                 align = AlignType.Center,
                 verticalAlign = VertAlignType.Middle,
@@ -136,9 +137,10 @@ namespace BattleCardPointsMod
                 strokeColor = Color.black,
                 UBBEnabled = true
             };
-            headerLabel.textFormat.size = Math.Max(18, fontSize - 6);
+            headerLabel.textFormat.size = Math.Max(16, fontSize - 8);
             headerLabel.textFormat.bold = true;
-            headerLabel.SetSize(totalW, HeaderH);
+            headerLabel.SetSize(totalW - 8f, headerH);
+            headerLabel.SetXY(4f, 0f);
             headerLabel.text = headerText;
             headerBox.AddChild(headerLabel);
 
@@ -147,7 +149,9 @@ namespace BattleCardPointsMod
             // 2. 如果打出了卡牌，在标头下方横向展示卡牌及其具体点数
             if (cardCount > 0)
             {
+                float cardsY = headerH + 36f;
                 float currentX = (totalW - cardsWidth) * 0.5f;
+
                 for (int i = 0; i < cardCount; i++)
                 {
                     int cardId = 0;
@@ -164,71 +168,112 @@ namespace BattleCardPointsMod
                     }
 
                     var item = CreateCardItem(cardId, bonus, role.PlayerId, isAtk, fontSize);
-                    item.SetXY(currentX, CardsY);
+                    item.SetXY(currentX, cardsY);
                     root.AddChild(item);
 
                     currentX += CardW + Gap;
                 }
 
-                root.SetSize(totalW, CardsY + CardH + 10f);
+                root.SetSize(totalW, cardsY + CardH + 10f);
             }
             else
             {
-                root.SetSize(totalW, HeaderH);
+                root.SetSize(totalW, headerH);
             }
 
             root.visible = true;
         }
 
-        private static string FormatHeaderText(BattleRole role, bool isAtk, int dice)
+        public static string FormatHeaderText(BattleRole role, bool isAtk, int dice)
         {
+            if (role == null) return string.Empty;
+
+            string label = isAtk ? "攻击" : (role.Dodge ? "闪避" : "防御");
+            string mainColor = isAtk ? "#FFD56A" : "#5CD6FF";
+
+            int baseVal = isAtk
+                ? (role.InitAtk > 0 ? role.InitAtk : role.Atk)
+                : (role.InitDef > 0 ? role.InitDef : role.Def);
+
+            int cardBonusSum = 0;
+            if (role.CardCombatBonus != null)
+            {
+                for (int i = 0; i < role.CardCombatBonus.Count; i++)
+                    cardBonusSum += role.CardCombatBonus[i].CardBonus;
+            }
+
+            var sb = new StringBuilder();
+
             if (isAtk)
             {
-                int cardBonusSum = 0;
-                foreach (var c in role.CardCombatBonus) cardBonusSum += c.CardBonus;
-
-                int finalAtk = role.Atk > 0 ? role.Atk : (dice > 0 ? role.InitAtk + cardBonusSum + dice : 0);
-                if (dice > 0 && finalAtk > 0)
+                if (dice >= 0)
                 {
-                    return $"[b]最终攻击：[/b][color=#FFD56A][b]{finalAtk}[/b][/color]  [size=16][color=#DDDDDD](判定骰 {dice})[/color][/size]";
+                    int finalAtk = Math.Max(role.Atk, baseVal + cardBonusSum + dice);
+                    sb.Append("攻击：[color=").Append(mainColor).Append("][b]").Append(finalAtk).Append("[/b][/color]")
+                      .Append("  判定骰：[color=").Append(mainColor).Append("][b]").Append(dice).Append("[/b][/color]");
                 }
-
-                if (role.MinAtk > 0 || role.MaxAtk > 0)
+                else
                 {
-                    if (role.MinAtk != role.MaxAtk)
-                        return $"[b]最终攻击：[/b][color=#FFD56A][b]{role.MinAtk}～{role.MaxAtk}[/b][/color]  [size=16][color=#DDDDDD](未投骰)[/color][/size]";
-                    return $"[b]最终攻击：[/b][color=#FFD56A][b]{role.MinAtk}[/b][/color]";
-                }
+                    sb.Append("攻击：[color=").Append(mainColor).Append("][b]").Append(baseVal).Append("[/b][/color]")
+                      .Append("  判定骰：未投");
 
-                return $"[b]当前攻击：[/b][color=#FFD56A][b]{role.Atk}[/b][/color]";
+                    int min = role.MinAtk;
+                    int max = role.MaxAtk;
+                    if (min > 0 && max > 0 && min != max)
+                    {
+                        sb.Append("\n牌后范围：[color=").Append(mainColor).Append("]").Append(min).Append('～').Append(max).Append("[/color]（未含判定骰）");
+                    }
+                    else
+                    {
+                        int cardAtk = baseVal + cardBonusSum;
+                        int displayAtk = min > 0 ? min : cardAtk;
+                        sb.Append("\n牌后数值：[color=").Append(mainColor).Append("]").Append(displayAtk).Append("[/color]（未含判定骰）");
+                    }
+                }
             }
             else
             {
                 if (role.Dodge)
                 {
-                    if (dice > 0)
-                        return $"[b]闪避判定：[/b][color=#5CD6FF][b]🎲 {dice}[/b][/color]";
-                    return $"[b]防守方式：[/b][color=#5CD6FF][b]闪避[/b][/color]  [size=16][color=#DDDDDD](未投骰)[/color][/size]";
+                    if (dice >= 0)
+                    {
+                        sb.Append("闪避  判定骰：[color=").Append(mainColor).Append("][b]").Append(dice).Append("[/b][/color]");
+                    }
+                    else
+                    {
+                        sb.Append("闪避  判定骰：未投");
+                    }
                 }
-
-                int cardBonusSum = 0;
-                foreach (var c in role.CardCombatBonus) cardBonusSum += c.CardBonus;
-
-                int finalDef = role.Def > 0 ? role.Def : (dice > 0 ? role.InitDef + cardBonusSum + dice : 0);
-                if (dice > 0 && finalDef > 0)
+                else
                 {
-                    return $"[b]最终防御：[/b][color=#5CD6FF][b]{finalDef}[/b][/color]  [size=16][color=#DDDDDD](判定骰 {dice})[/color][/size]";
-                }
+                    if (dice >= 0)
+                    {
+                        int finalDef = Math.Max(role.Def, baseVal + cardBonusSum + dice);
+                        sb.Append("防御：[color=").Append(mainColor).Append("][b]").Append(finalDef).Append("[/b][/color]")
+                          .Append("  判定骰：[color=").Append(mainColor).Append("][b]").Append(dice).Append("[/b][/color]");
+                    }
+                    else
+                    {
+                        sb.Append("防御：[color=").Append(mainColor).Append("][b]").Append(baseVal).Append("[/b][/color]")
+                          .Append("  判定骰：未投");
 
-                if (role.MinDef > 0 || role.MaxDef > 0)
-                {
-                    if (role.MinDef != role.MaxDef)
-                        return $"[b]最终防御：[/b][color=#5CD6FF][b]{role.MinDef}～{role.MaxDef}[/b][/color]  [size=16][color=#DDDDDD](未投骰)[/color][/size]";
-                    return $"[b]最终防御：[/b][color=#5CD6FF][b]{role.MinDef}[/b][/color]";
+                        int min = role.MinDef;
+                        int max = role.MaxDef;
+                        if (min > 0 && max > 0 && min != max)
+                        {
+                            sb.Append("\n牌后范围：[color=").Append(mainColor).Append("]").Append(min).Append('～').Append(max).Append("[/color]（未含判定骰）");
+                        }
+                        else
+                        {
+                            int cardDef = baseVal + cardBonusSum;
+                            int displayDef = min > 0 ? min : cardDef;
+                            sb.Append("\n牌后数值：[color=").Append(mainColor).Append("]").Append(displayDef).Append("[/color]（未含判定骰）");
+                        }
+                    }
                 }
-
-                return $"[b]当前防御：[/b][color=#5CD6FF][b]{role.Def}[/b][/color]";
             }
+
+            return sb.ToString();
         }
 
         private GComponent CreateCardItem(int cardId, int? bonus, long playerId, bool isAtk, int fontSize)
@@ -318,6 +363,8 @@ namespace BattleCardPointsMod
             sb.Append(role.PlayerId).Append(';')
               .Append(role.Atk).Append(';')
               .Append(role.Def).Append(';')
+              .Append(role.InitAtk).Append(';')
+              .Append(role.InitDef).Append(';')
               .Append(role.MinAtk).Append(';')
               .Append(role.MaxAtk).Append(';')
               .Append(role.MinDef).Append(';')
