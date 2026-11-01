@@ -73,6 +73,12 @@ jobs:
           dotnet build source/BattleCardPointsMod.csproj -c Release --nologo
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Test
+        shell: pwsh
+        run: |
+          dotnet test tests/BattleCardPointsMod.Tests/BattleCardPointsMod.Tests.csproj --nologo
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Stage package
         shell: pwsh
         run: |

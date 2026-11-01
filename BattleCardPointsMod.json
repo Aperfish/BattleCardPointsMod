@@ -1,1 +1,1 @@
-{"id":"BattleCardPointsMod","name":"战斗牌点数显示","version":"1.0.2","author":"Aperfish","description":"基于 CombatOddsMod 的战斗覆盖层实现，在战斗窗口右侧显示每张战斗牌已同步的具体点数、实时攻防、牌后数值范围和判定骰点数。","permissions":1,"sdkVersion":"2.9.1","dependencies":[]}
+{"id":"BattleCardPointsMod","name":"战斗牌点数显示","version":"1.1.0","author":"Aperfish","description":"在每张战斗牌上方直接显示点数，并在战斗窗口两侧展示最终攻击与防御数值。","permissions":1,"sdkVersion":"2.9.1","dependencies":[]}

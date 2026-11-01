@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <Nullable>disable</Nullable>
+    <NuGetAudit>false</NuGetAudit>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>ModSourceRoot</_Parameter1>
+      <_Parameter2>$(MSBuildProjectDirectory)/../../source</_Parameter2>
+    </AssemblyAttribute>
+    <Reference Include="CesiumLoader.SDK">
+      <HintPath Condition="Exists('$(CesiumSdkDir)CesiumLoader.SDK.dll')">$(CesiumSdkDir)CesiumLoader.SDK.dll</HintPath>
+      <HintPath Condition="!Exists('$(CesiumSdkDir)CesiumLoader.SDK.dll')">$(MSBuildThisFileDirectory)../../refs/CesiumLoader.SDK.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="AstralParty.Runtime">
+      <HintPath Condition="Exists('$(GameRefsDir)AstralParty.Runtime.dll')">$(GameRefsDir)AstralParty.Runtime.dll</HintPath>
+      <HintPath Condition="!Exists('$(GameRefsDir)AstralParty.Runtime.dll')">$(MSBuildThisFileDirectory)../../refs/game/AstralParty.Runtime.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Google.Protobuf.Runtime">
+      <HintPath Condition="Exists('$(GameRefsDir)Google.Protobuf.Runtime.dll')">$(GameRefsDir)Google.Protobuf.Runtime.dll</HintPath>
+      <HintPath Condition="!Exists('$(GameRefsDir)Google.Protobuf.Runtime.dll')">$(MSBuildThisFileDirectory)../../refs/game/Google.Protobuf.Runtime.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="UniTask">
+      <HintPath Condition="Exists('$(GameRefsDir)UniTask.dll')">$(GameRefsDir)UniTask.dll</HintPath>
+      <HintPath Condition="!Exists('$(GameRefsDir)UniTask.dll')">$(MSBuildThisFileDirectory)../../refs/game/UniTask.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath Condition="Exists('$(GameRefsDir)UnityEngine.CoreModule.dll')">$(GameRefsDir)UnityEngine.CoreModule.dll</HintPath>
+      <HintPath Condition="!Exists('$(GameRefsDir)UnityEngine.CoreModule.dll')">$(MSBuildThisFileDirectory)../../refs/game/UnityEngine.CoreModule.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <ProjectReference Include="../../source/BattleCardPointsMod.csproj" />
+  </ItemGroup>
+</Project>
