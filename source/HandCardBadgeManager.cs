@@ -45,8 +45,7 @@ namespace BattleCardPointsMod
                         autoSize = AutoSizeType.None,
                         align = AlignType.Center,
                         verticalAlign = VertAlignType.Middle,
-                        stroke = 2.5f,
-                        strokeColor = Color.black,
+                        stroke = 0f,
                         UBBEnabled = true
                     };
                     badge.textFormat.bold = true;

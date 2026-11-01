@@ -69,10 +69,13 @@ namespace BattleCardPointsMod.Tests
             };
             role.CardCombatBonus.Add(new party.model.cardCombat { CardId = 10001, CardBonus = 2 });
 
-            // Before dice: shows base attack and post-card value
+            // Before dice: shows base attack and post-card value (even if MinAtk/MaxAtk has a range)
+            role.MinAtk = 4;
+            role.MaxAtk = 9;
             string before = PlayedCardsOverlay.FormatHeaderText(role, isAtk: true, dice: -1);
             Assert.Contains("攻击：[color=#FFD56A][b]3[/b][/color]  判定骰：未投", before);
             Assert.Contains("牌后数值：[color=#FFD56A]5[/color]（未含判定骰）", before);
+            Assert.DoesNotContain("牌后范围", before);
 
             // After dice (e.g. 4): final attack becomes 3 + 2 + 4 = 9
             string after = PlayedCardsOverlay.FormatHeaderText(role, isAtk: true, dice: 4);
