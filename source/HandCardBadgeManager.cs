@@ -48,6 +48,7 @@ namespace BattleCardPointsMod
                         stroke = 0f,
                         UBBEnabled = true
                     };
+                    badge.textFormat.color = Color.white;
                     badge.textFormat.bold = true;
                     badge.textFormat.size = fontSize;
                     float w = cardObj.width > 0 ? cardObj.width : 220f;

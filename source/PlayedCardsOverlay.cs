@@ -78,13 +78,13 @@ namespace BattleCardPointsMod
             // Attacker on left side
             if (_atkRoot != null && _atkRoot.visible)
             {
-                _atkRoot.SetXY(70f + offsetX, y);
+                _atkRoot.SetXY(50f + offsetX, y);
             }
 
             // Defender on right side, right-aligned
             if (_defRoot != null && _defRoot.visible)
             {
-                float defX = paneW - 70f - _defRoot.width + offsetX;
+                float defX = paneW - 50f - _defRoot.width + offsetX;
                 _defRoot.SetXY(defX, y);
             }
         }
@@ -110,11 +110,11 @@ namespace BattleCardPointsMod
             int cardCount = Math.Max(bonusList.Count, useCards.Count);
 
             float cardsWidth = cardCount > 0 ? (cardCount * CardW + (cardCount - 1) * Gap) : 0f;
-            float totalW = Math.Max(260f, cardsWidth);
+            float totalW = Math.Max(300f, cardsWidth);
 
-            // 1. 最终数值标头（攻击/防御、判定骰、牌后范围/数值）
+            // 1. 最终数值标头（攻击/防御、判定骰、牌后数值）
             bool isDiceSettled = dice >= 0 || (!isAtk && role.Dodge);
-            float headerH = isDiceSettled ? 36f : 56f;
+            float headerH = isDiceSettled ? 42f : 68f;
 
             var headerBox = new GComponent { touchable = false };
             headerBox.SetSize(totalW, headerH);
@@ -136,7 +136,8 @@ namespace BattleCardPointsMod
                 stroke = 0f,
                 UBBEnabled = true
             };
-            headerLabel.textFormat.size = Math.Max(16, fontSize - 8);
+            headerLabel.textFormat.color = Color.white;
+            headerLabel.textFormat.size = Math.Max(20, fontSize - 4);
             headerLabel.textFormat.bold = true;
             headerLabel.SetSize(totalW - 8f, headerH);
             headerLabel.SetXY(4f, 0f);
@@ -148,7 +149,7 @@ namespace BattleCardPointsMod
             // 2. 如果打出了卡牌，在标头下方横向展示卡牌及其具体点数
             if (cardCount > 0)
             {
-                float cardsY = headerH + 36f;
+                float cardsY = headerH + 38f;
                 float currentX = (totalW - cardsWidth) * 0.5f;
 
                 for (int i = 0; i < cardCount; i++)
@@ -208,17 +209,17 @@ namespace BattleCardPointsMod
                 if (dice >= 0)
                 {
                     int finalAtk = Math.Max(role.Atk, baseVal + cardBonusSum + dice);
-                    sb.Append("攻击：[color=").Append(mainColor).Append("][b]").Append(finalAtk).Append("[/b][/color]")
-                      .Append("  判定骰：[color=").Append(mainColor).Append("][b]").Append(dice).Append("[/b][/color]");
+                    sb.Append("[color=#FFFFFF]攻击：[/color][color=").Append(mainColor).Append("][b]").Append(finalAtk).Append("[/b][/color]")
+                      .Append("  [color=#FFFFFF]判定骰：[/color][color=").Append(mainColor).Append("][b]").Append(dice).Append("[/b][/color]");
                 }
                 else
                 {
-                    sb.Append("攻击：[color=").Append(mainColor).Append("][b]").Append(baseVal).Append("[/b][/color]")
-                      .Append("  判定骰：未投");
+                    sb.Append("[color=#FFFFFF]攻击：[/color][color=").Append(mainColor).Append("][b]").Append(baseVal).Append("[/b][/color]")
+                      .Append("  [color=#FFFFFF]判定骰：未投[/color]");
 
                     int cardAtk = baseVal + cardBonusSum;
                     int displayAtk = cardAtk > 0 ? cardAtk : (role.MinAtk > 0 ? role.MinAtk : baseVal);
-                    sb.Append("\n牌后数值：[color=").Append(mainColor).Append("]").Append(displayAtk).Append("[/color]（未含判定骰）");
+                    sb.Append("\n[color=#FFFFFF]牌后数值：[/color][color=").Append(mainColor).Append("][b]").Append(displayAtk).Append("[/b][/color][color=#CCCCCC]（未含判定骰）[/color]");
                 }
             }
             else
@@ -227,11 +228,11 @@ namespace BattleCardPointsMod
                 {
                     if (dice >= 0)
                     {
-                        sb.Append("闪避  判定骰：[color=").Append(mainColor).Append("][b]").Append(dice).Append("[/b][/color]");
+                        sb.Append("[color=#FFFFFF]闪避  判定骰：[/color][color=").Append(mainColor).Append("][b]").Append(dice).Append("[/b][/color]");
                     }
                     else
                     {
-                        sb.Append("闪避  判定骰：未投");
+                        sb.Append("[color=#FFFFFF]闪避  判定骰：未投[/color]");
                     }
                 }
                 else
@@ -239,17 +240,17 @@ namespace BattleCardPointsMod
                     if (dice >= 0)
                     {
                         int finalDef = Math.Max(role.Def, baseVal + cardBonusSum + dice);
-                        sb.Append("防御：[color=").Append(mainColor).Append("][b]").Append(finalDef).Append("[/b][/color]")
-                          .Append("  判定骰：[color=").Append(mainColor).Append("][b]").Append(dice).Append("[/b][/color]");
+                        sb.Append("[color=#FFFFFF]防御：[/color][color=").Append(mainColor).Append("][b]").Append(finalDef).Append("[/b][/color]")
+                          .Append("  [color=#FFFFFF]判定骰：[/color][color=").Append(mainColor).Append("][b]").Append(dice).Append("[/b][/color]");
                     }
                     else
                     {
-                        sb.Append("防御：[color=").Append(mainColor).Append("][b]").Append(baseVal).Append("[/b][/color]")
-                          .Append("  判定骰：未投");
+                        sb.Append("[color=#FFFFFF]防御：[/color][color=").Append(mainColor).Append("][b]").Append(baseVal).Append("[/b][/color]")
+                          .Append("  [color=#FFFFFF]判定骰：未投[/color]");
 
                         int cardDef = baseVal + cardBonusSum;
                         int displayDef = cardDef > 0 ? cardDef : (role.MinDef > 0 ? role.MinDef : baseVal);
-                        sb.Append("\n牌后数值：[color=").Append(mainColor).Append("]").Append(displayDef).Append("[/color]（未含判定骰）");
+                        sb.Append("\n[color=#FFFFFF]牌后数值：[/color][color=").Append(mainColor).Append("][b]").Append(displayDef).Append("[/b][/color][color=#CCCCCC]（未含判定骰）[/color]");
                     }
                 }
             }
@@ -300,6 +301,7 @@ namespace BattleCardPointsMod
                     verticalAlign = VertAlignType.Middle,
                     stroke = 0f
                 };
+                nameLabel.textFormat.color = Color.white;
                 nameLabel.textFormat.size = 14;
                 nameLabel.textFormat.bold = true;
                 nameLabel.text = CardPointHelper.CardName(cardId);
@@ -319,6 +321,7 @@ namespace BattleCardPointsMod
                 stroke = 0f,
                 UBBEnabled = true
             };
+            badge.textFormat.color = Color.white;
             badge.textFormat.bold = true;
             badge.textFormat.size = Math.Max(26, fontSize);
 
