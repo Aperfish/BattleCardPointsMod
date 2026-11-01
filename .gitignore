@@ -11,6 +11,4 @@ refs/
 # 本地打包中间产物
 artifacts/
 staging/
-BattleCardPointsMod.zip
-BattleCardPointsMod-*.zip
-!BattleCardPointsMod-v1.0.1.zip
+*.zip
