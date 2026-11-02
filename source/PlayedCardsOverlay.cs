@@ -33,10 +33,12 @@ namespace BattleCardPointsMod
             EnsureRoots(pane);
 
             // Update attacker (left side)
-            UpdateSide(_atkRoot, attacker, isAtk: true, attackerDice, fontSize, ref _lastAtkSig);
+            float paneW = pane.width > 0 ? pane.width : 1920f;
+            float panelWidth = Math.Min(Math.Max(400f, fontSize * 18f), paneW * 0.26f);
+            UpdateSide(_atkRoot, attacker, isAtk: true, attackerDice, fontSize, panelWidth, ref _lastAtkSig);
 
             // Update defender (right side)
-            UpdateSide(_defRoot, defender, isAtk: false, defenderDice, fontSize, ref _lastDefSig);
+            UpdateSide(_defRoot, defender, isAtk: false, defenderDice, fontSize, panelWidth, ref _lastDefSig);
 
             // Position containers on screen
             PositionRoots(pane, offsetX, offsetY);
@@ -73,23 +75,28 @@ namespace BattleCardPointsMod
             float paneW = pane.width > 0 ? pane.width : 1920f;
             float paneH = pane.height > 0 ? pane.height : 1080f;
 
-            float y = paneH * 0.35f + offsetY;
-
-            // Attacker on left side
-            if (_atkRoot != null && _atkRoot.visible)
-            {
-                _atkRoot.SetXY(50f + offsetX, y);
-            }
-
-            // Defender on right side, right-aligned
-            if (_defRoot != null && _defRoot.visible)
-            {
-                float defX = paneW - 50f - _defRoot.width + offsetX;
-                _defRoot.SetXY(defX, y);
-            }
+            // Keep both panels below the actors/HP and outside the central hand
+            // area. The inset on the right also leaves room for the back button.
+            float y = Math.Max(16f, Math.Min(paneH - 80f, paneH * 0.70f + offsetY));
+            float availableH = Math.Max(48f, paneH - y - 24f);
+            float maxH = Math.Max(_atkRoot?.height ?? 0f, _defRoot?.height ?? 0f);
+            float maxW = Math.Max(_atkRoot?.width ?? 0f, _defRoot?.width ?? 0f);
+            float scale = Math.Min(1f, Math.Min(availableH / Math.Max(1f, maxH),
+                paneW * 0.27f / Math.Max(1f, maxW)));
+            PositionSide(_atkRoot, paneW * 0.225f + offsetX, y, scale, paneW);
+            PositionSide(_defRoot, paneW * 0.775f + offsetX, y, scale, paneW);
         }
 
-        private void UpdateSide(GComponent root, BattleRole role, bool isAtk, int dice, int fontSize, ref string lastSig)
+        private static void PositionSide(GComponent root, float centerX, float y, float scale, float paneW)
+        {
+            if (root == null || !root.visible) return;
+            root.SetScale(scale, scale);
+            float width = root.width * scale;
+            float x = Math.Max(16f, Math.Min(paneW - width - 16f, centerX - width * 0.5f));
+            root.SetXY(x, y);
+        }
+
+        private void UpdateSide(GComponent root, BattleRole role, bool isAtk, int dice, int fontSize, float panelWidth, ref string lastSig)
         {
             if (root == null) return;
             if (role == null)
@@ -99,7 +106,7 @@ namespace BattleCardPointsMod
                 return;
             }
 
-            string sig = BuildSignature(role, dice, fontSize);
+            string sig = BuildSignature(role, dice, fontSize) + ";" + panelWidth;
             if (sig == lastSig) return;
             lastSig = sig;
 
@@ -109,28 +116,18 @@ namespace BattleCardPointsMod
             var useCards = role.UseCards;
             int cardCount = Math.Max(bonusList.Count, useCards.Count);
 
-            float cardsWidth = cardCount > 0 ? (cardCount * CardW + (cardCount - 1) * Gap) : 0f;
-            float totalW = Math.Max(300f, cardsWidth);
+            float totalW = panelWidth;
+            int columns = Math.Max(1, (int)((totalW + Gap) / (CardW + Gap)));
 
             // 1. 最终数值标头（攻击/防御、判定骰、牌后数值）
             bool isDiceSettled = dice >= 0 || (!isAtk && role.Dodge);
-            float headerH = isDiceSettled ? 42f : 68f;
-
-            var headerBox = new GComponent { touchable = false };
-            headerBox.SetSize(totalW, headerH);
-
-            var headerBg = new GGraph { touchable = false };
-            headerBg.SetSize(totalW, headerH);
-            Color bgColor = new Color(0.06f, 0.08f, 0.12f, 0.90f);
-            headerBg.DrawRoundRect(totalW, headerH, bgColor, new float[] { 6f, 6f, 6f, 6f });
-            headerBox.AddChild(headerBg);
 
             string headerText = FormatHeaderText(role, isAtk, dice);
             var headerLabel = new GTextField
             {
                 touchable = false,
                 singleLine = false,
-                autoSize = AutoSizeType.None,
+                autoSize = AutoSizeType.Height,
                 align = AlignType.Center,
                 verticalAlign = VertAlignType.Middle,
                 stroke = 0f,
@@ -139,9 +136,18 @@ namespace BattleCardPointsMod
             headerLabel.textFormat.color = Color.white;
             headerLabel.textFormat.size = Math.Max(20, fontSize - 4);
             headerLabel.textFormat.bold = true;
-            headerLabel.SetSize(totalW - 8f, headerH);
-            headerLabel.SetXY(4f, 0f);
+            headerLabel.SetSize(totalW - 24f, 0f);
+            headerLabel.SetXY(12f, 8f);
             headerLabel.text = headerText;
+            float headerH = Math.Max(isDiceSettled ? 46f : 76f, headerLabel.textHeight + 16f);
+
+            var headerBox = new GComponent { touchable = false };
+            headerBox.SetSize(totalW, headerH);
+            var headerBg = new GGraph { touchable = false };
+            headerBg.SetSize(totalW, headerH);
+            Color bgColor = new Color(0.06f, 0.08f, 0.12f, 0.90f);
+            headerBg.DrawRoundRect(totalW, headerH, bgColor, new float[] { 6f, 6f, 6f, 6f });
+            headerBox.AddChild(headerBg);
             headerBox.AddChild(headerLabel);
 
             root.AddChild(headerBox);
@@ -150,7 +156,6 @@ namespace BattleCardPointsMod
             if (cardCount > 0)
             {
                 float cardsY = headerH + 38f;
-                float currentX = (totalW - cardsWidth) * 0.5f;
 
                 for (int i = 0; i < cardCount; i++)
                 {
@@ -168,13 +173,17 @@ namespace BattleCardPointsMod
                     }
 
                     var item = CreateCardItem(cardId, bonus, role.PlayerId, isAtk, fontSize);
-                    item.SetXY(currentX, cardsY);
+                    int row = i / columns;
+                    int column = i % columns;
+                    int inRow = Math.Min(columns, cardCount - row * columns);
+                    float rowWidth = inRow * CardW + (inRow - 1) * Gap;
+                    item.SetXY((totalW - rowWidth) * 0.5f + column * (CardW + Gap),
+                        cardsY + row * (CardH + 46f));
                     root.AddChild(item);
-
-                    currentX += CardW + Gap;
                 }
 
-                root.SetSize(totalW, cardsY + CardH + 10f);
+                int rows = (cardCount + columns - 1) / columns;
+                root.SetSize(totalW, cardsY + (rows - 1) * (CardH + 46f) + CardH + 10f);
             }
             else
             {
