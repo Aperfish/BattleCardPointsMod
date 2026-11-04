@@ -12,8 +12,8 @@ using Tools;
 using UI;
 using UnityEngine;
 
-[assembly: ModManifest("战斗牌点数", "1.2.2", "Aperfish",
-    "显示手牌点数范围与已出牌的实际点数。",
+[assembly: ModManifest("战斗牌点数", "1.2.3", "Aperfish",
+    "显示已出牌的实际点数与战斗攻防数值。",
     Permissions = ModPermission.ReadGameState, SdkVersion = "2.9.1")]
 
 namespace BattleCardPointsMod
@@ -32,12 +32,10 @@ namespace BattleCardPointsMod
         private static readonly FieldInfo FightWindowField =
             typeof(UIManager).GetField("_cachedFightWindow", BindingFlags.Instance | BindingFlags.NonPublic);
 
-        private readonly HandCardBadgeManager _handBadges = new HandCardBadgeManager();
         private readonly PlayedCardsOverlay _playedOverlay = new PlayedCardsOverlay();
 
         private bool _enabled = true;
         private bool _showForOthers = true;
-        private bool _showHandPoints = true;
         private bool _showPlayedPoints = true;
         private int _fontSize = 26;
         private float _offsetX = 0f;
@@ -72,7 +70,7 @@ namespace BattleCardPointsMod
 
             Context.RegisterCleanup(Unsubscribe);
             GameEvents.StartAutoHook();
-            SdkLog.Info("BattleCardPoints", "已启用：在每张战斗牌上方显示点数并展示最终攻击与防御。");
+            SdkLog.Info("BattleCardPoints", "已启用：显示已出牌点数与战斗攻防数值。");
         }
 
         public override void OnConfigChanged()
@@ -80,7 +78,6 @@ namespace BattleCardPointsMod
             if (Config == null) return;
             _enabled = Config.GetBool("CardPointsEnabled", Config.GetBool("Enabled", true));
             _showForOthers = Config.GetBool("CardPointsShowForOthers", Config.GetBool("ShowForOthers", true));
-            _showHandPoints = Config.GetBool("ShowHandPoints", true);
             _showPlayedPoints = Config.GetBool("ShowPlayedPoints", true);
             _fontSize = Math.Max(16, Math.Min(48, Config.GetInt("FontSize", 26)));
             _offsetX = (float)Config.GetDouble("OffsetX", 0);
@@ -221,10 +218,7 @@ namespace BattleCardPointsMod
                 if (live.defenderInfo.Point > 0)
                     _defenderDice = live.defenderInfo.Point;
 
-                // 2. 手牌上方点数预估范围
-                _handBadges.UpdateBadges(fightWin, _showHandPoints && !live.isEnd, _fontSize);
-
-                // 3. 双方最终数值标头与已打出卡牌
+                // 双方最终数值标头与已打出卡牌
                 if (!_showForOthers && !Players.IsSelf(live.attackerInfo.PlayerId) && !Players.IsSelf(live.defenderInfo.PlayerId))
                 {
                     _playedOverlay.Hide();

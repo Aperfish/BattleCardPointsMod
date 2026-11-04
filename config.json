@@ -1,7 +1,6 @@
 {
   "CardPointsEnabled": true,
   "CardPointsShowForOthers": true,
-  "ShowHandPoints": true,
   "ShowPlayedPoints": true,
   "FontSize": 26,
   "OffsetX": 0,
@@ -9,7 +8,6 @@
   "_comments": {
     "CardPointsEnabled": "点数显示总开关。",
     "CardPointsShowForOthers": "显示其他玩家战斗中的已出牌点数。",
-    "ShowHandPoints": "在手牌上方显示未打出的战斗牌点数范围。",
     "ShowPlayedPoints": "在已打出的战斗牌上方显示服务器同步的实际点数。",
     "FontSize": "文字大小，16～48，默认26。",
     "OffsetX": "已出牌显示区域水平偏移，正数向右。",

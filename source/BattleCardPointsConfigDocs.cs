@@ -18,11 +18,6 @@ namespace BattleCardPointsMod
                 "顯示其他玩家戰鬥中的已出牌點數。",
                 "Show played battle card points for other players.",
                 "他のプレイヤーの戦闘でも使用カードの出目を表示します。"));
-            changed |= config.Describe("ShowHandPoints", D(
-                "在手牌上方显示未打出的战斗牌点数范围。",
-                "在手牌上方顯示未打出的戰鬥牌點數範圍。",
-                "Show expected point range above unplayed hand cards.",
-                "手札の戦闘カード上部に予想出目範囲を表示します。"));
             changed |= config.Describe("ShowPlayedPoints", D(
                 "在已打出的战斗牌上方显示服务器同步的实际点数。",
                 "在已打出的戰鬥牌上方顯示伺服器同步的實際點數。",

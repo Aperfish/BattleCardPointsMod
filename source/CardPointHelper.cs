@@ -14,17 +14,6 @@ namespace BattleCardPointsMod
             public bool IsAttack;
             public bool IsValid;
 
-            public string GetRangeText()
-            {
-                if (!IsValid) return null;
-                string color = IsAttack ? "#FF5555" : "#4DA6FF";
-                if (Min == Max)
-                {
-                    string val = Min >= 0 ? $"+{Min}" : $"{Min}";
-                    return $"[color={color}][b]{val}[/b][/color]";
-                }
-                return $"[color={color}][b]+{Min}～{Max}[/b][/color]";
-            }
         }
 
         public static PointRange GetPointRange(int cardId)

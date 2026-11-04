@@ -8,21 +8,20 @@ namespace BattleCardPointsMod.Tests
     public class CardPointsTests
     {
         [Theory]
-        [InlineData(10001, 1, 3, true, "[color=#FF5555][b]+1～3[/b][/color]")]
-        [InlineData(10002, 1, 3, false, "[color=#4DA6FF][b]+1～3[/b][/color]")]
-        [InlineData(10003, 1, 6, true, "[color=#FF5555][b]+1～6[/b][/color]")]
-        [InlineData(10004, 1, 6, false, "[color=#4DA6FF][b]+1～6[/b][/color]")]
-        [InlineData(10005, 1, 10, true, "[color=#FF5555][b]+1～10[/b][/color]")]
-        [InlineData(10006, 1, 10, false, "[color=#4DA6FF][b]+1～10[/b][/color]")]
-        [InlineData(10007, 1, 20, true, "[color=#FF5555][b]+1～20[/b][/color]")]
-        public void TestBattleCardPoints(int cardId, int expectedMin, int expectedMax, bool expectedAtk, string expectedText)
+        [InlineData(10001, 1, 3, true)]
+        [InlineData(10002, 1, 3, false)]
+        [InlineData(10003, 1, 6, true)]
+        [InlineData(10004, 1, 6, false)]
+        [InlineData(10005, 1, 10, true)]
+        [InlineData(10006, 1, 10, false)]
+        [InlineData(10007, 1, 20, true)]
+        public void TestBattleCardPoints(int cardId, int expectedMin, int expectedMax, bool expectedAtk)
         {
             var range = CardPointHelper.GetPointRange(cardId);
             Assert.True(range.IsValid, $"Card {cardId} should be valid");
             Assert.Equal(expectedMin, range.Min);
             Assert.Equal(expectedMax, range.Max);
             Assert.Equal(expectedAtk, range.IsAttack);
-            Assert.Equal(expectedText, range.GetRangeText());
         }
 
         [Theory]
@@ -36,7 +35,6 @@ namespace BattleCardPointsMod.Tests
         {
             var range = CardPointHelper.GetPointRange(cardId);
             Assert.False(range.IsValid, $"Card {cardId} should not be valid");
-            Assert.Null(range.GetRangeText());
         }
 
         [Fact]
@@ -49,7 +47,6 @@ namespace BattleCardPointsMod.Tests
             var comments = config.Get<System.Collections.Generic.Dictionary<string, object>>("_comments");
             Assert.NotNull(comments);
             Assert.True(comments.ContainsKey("CardPointsEnabled"));
-            Assert.True(comments.ContainsKey("ShowHandPoints"));
             Assert.True(comments.ContainsKey("ShowPlayedPoints"));
         }
 
