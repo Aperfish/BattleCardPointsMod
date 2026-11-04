@@ -325,7 +325,8 @@ namespace BattleCardPointsMod
                 autoSize = AutoSizeType.None,
                 align = AlignType.Center,
                 verticalAlign = VertAlignType.Middle,
-                stroke = 0f,
+                stroke = 2f,
+                strokeColor = Color.white,
                 UBBEnabled = true
             };
             badge.textFormat.color = Color.white;
