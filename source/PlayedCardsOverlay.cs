@@ -114,7 +114,8 @@ namespace BattleCardPointsMod
 
             var bonusList = role.CardCombatBonus;
             var useCards = role.UseCards;
-            int cardCount = Math.Max(bonusList.Count, useCards.Count);
+            int cardCount = bonusList.Count > 0 ? bonusList.Count : useCards.Count;
+
 
             float totalW = panelWidth;
             int columns = Math.Max(1, (int)((totalW + Gap) / (CardW + Gap)));
@@ -162,14 +163,14 @@ namespace BattleCardPointsMod
                     int cardId = 0;
                     int? bonus = null;
 
-                    if (i < bonusList.Count)
+                    if (bonusList.Count > 0)
                     {
                         cardId = bonusList[i].CardId;
                         bonus = bonusList[i].CardBonus;
                     }
-                    else if (i < useCards.Count)
+                    else
                     {
-                        cardId = useCards[i];
+                        cardId = CardPointHelper.ResolvePlayedCardId(role.PlayerId, useCards[i]);
                     }
 
                     var item = CreateCardItem(cardId, bonus, role.PlayerId, isAtk, fontSize);
@@ -204,20 +205,13 @@ namespace BattleCardPointsMod
                 ? (role.InitAtk > 0 ? role.InitAtk : role.Atk)
                 : (role.InitDef > 0 ? role.InitDef : role.Def);
 
-            int cardBonusSum = 0;
-            if (role.CardCombatBonus != null)
-            {
-                for (int i = 0; i < role.CardCombatBonus.Count; i++)
-                    cardBonusSum += role.CardCombatBonus[i].CardBonus;
-            }
-
             var sb = new StringBuilder();
 
             if (isAtk)
             {
                 if (dice >= 0)
                 {
-                    int finalAtk = Math.Max(role.Atk, baseVal + cardBonusSum + dice);
+                    int finalAtk = role.Atk;
                     sb.Append("[color=#FFFFFF]攻击：[/color][color=").Append(mainColor).Append("][b]").Append(finalAtk).Append("[/b][/color]")
                       .Append("  [color=#FFFFFF]判定骰：[/color][color=").Append(mainColor).Append("][b]").Append(dice).Append("[/b][/color]");
                 }
@@ -226,8 +220,7 @@ namespace BattleCardPointsMod
                     sb.Append("[color=#FFFFFF]攻击：[/color][color=").Append(mainColor).Append("][b]").Append(baseVal).Append("[/b][/color]")
                       .Append("  [color=#FFFFFF]判定骰：未投[/color]");
 
-                    int cardAtk = baseVal + cardBonusSum;
-                    int displayAtk = cardAtk > 0 ? cardAtk : (role.MinAtk > 0 ? role.MinAtk : baseVal);
+                    string displayAtk = PlayedRangeText(role, true);
                     sb.Append("\n[color=#FFFFFF]牌后数值：[/color][color=").Append(mainColor).Append("][b]").Append(displayAtk).Append("[/b][/color][color=#CCCCCC]（未含判定骰）[/color]");
                 }
             }
@@ -248,7 +241,7 @@ namespace BattleCardPointsMod
                 {
                     if (dice >= 0)
                     {
-                        int finalDef = Math.Max(role.Def, baseVal + cardBonusSum + dice);
+                        int finalDef = role.Def;
                         sb.Append("[color=#FFFFFF]防御：[/color][color=").Append(mainColor).Append("][b]").Append(finalDef).Append("[/b][/color]")
                           .Append("  [color=#FFFFFF]判定骰：[/color][color=").Append(mainColor).Append("][b]").Append(dice).Append("[/b][/color]");
                     }
@@ -257,14 +250,19 @@ namespace BattleCardPointsMod
                         sb.Append("[color=#FFFFFF]防御：[/color][color=").Append(mainColor).Append("][b]").Append(baseVal).Append("[/b][/color]")
                           .Append("  [color=#FFFFFF]判定骰：未投[/color]");
 
-                        int cardDef = baseVal + cardBonusSum;
-                        int displayDef = cardDef > 0 ? cardDef : (role.MinDef > 0 ? role.MinDef : baseVal);
+                        string displayDef = PlayedRangeText(role, false);
                         sb.Append("\n[color=#FFFFFF]牌后数值：[/color][color=").Append(mainColor).Append("][b]").Append(displayDef).Append("[/b][/color][color=#CCCCCC]（未含判定骰）[/color]");
                     }
                 }
             }
 
             return sb.ToString();
+        }
+
+        private static string PlayedRangeText(BattleRole role, bool attack)
+        {
+            CardPointHelper.TryNarrowPlayedRange(role, attack, out int min, out int max);
+            return min == max ? min.ToString() : min + "～" + max;
         }
 
         private GComponent CreateCardItem(int cardId, int? bonus, long playerId, bool isAtk, int fontSize)
@@ -313,7 +311,7 @@ namespace BattleCardPointsMod
                 nameLabel.textFormat.color = Color.white;
                 nameLabel.textFormat.size = 14;
                 nameLabel.textFormat.bold = true;
-                nameLabel.text = CardPointHelper.CardName(cardId);
+                nameLabel.text = cardId > 0 ? CardPointHelper.CardName(cardId) : "已出牌";
                 nameLabel.SetSize(CardW - 6f, 50f);
                 nameLabel.SetXY(3f, 32f);
                 item.AddChild(nameLabel);
@@ -337,7 +335,7 @@ namespace BattleCardPointsMod
             string color = isAtk ? "#FF5555" : "#4DA6FF";
             string text = bonus.HasValue
                 ? (bonus.Value >= 0 ? $"+{bonus.Value}" : $"{bonus.Value}")
-                : "...";
+                : "待结算";
             badge.text = $"[color={color}][b]{text}[/b][/color]";
 
             badge.SetSize(CardW, 34f);
@@ -364,7 +362,7 @@ namespace BattleCardPointsMod
               .Append(role.Dodge ? 1 : 0).Append(';')
               .Append(fontSize).Append(';');
             for (int i = 0; i < role.UseCards.Count; i++)
-                sb.Append(role.UseCards[i]).Append(',');
+                sb.Append(role.UseCards[i]).Append(':').Append(CardPointHelper.ResolvePlayedCardId(role.PlayerId, role.UseCards[i])).Append(',');
             sb.Append('|');
             for (int i = 0; i < role.CardCombatBonus.Count; i++)
             {

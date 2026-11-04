@@ -8,12 +8,12 @@ namespace BattleCardPointsMod
         {
             if (config == null) return false;
             bool changed = false;
-            changed |= config.Describe("Enabled", D(
+            changed |= config.Describe("CardPointsEnabled", D(
                 "总开关：关闭后不显示战斗牌点数。",
                 "總開關：關閉後不顯示戰鬥牌點數。",
                 "Master switch: disables battle card point displays when off.",
                 "全体スイッチ：オフにすると戦闘カードの出目表示を無効にします。"));
-            changed |= config.Describe("ShowForOthers", D(
+            changed |= config.Describe("CardPointsShowForOthers", D(
                 "显示其他玩家战斗中的已出牌点数。",
                 "顯示其他玩家戰鬥中的已出牌點數。",
                 "Show played battle card points for other players.",

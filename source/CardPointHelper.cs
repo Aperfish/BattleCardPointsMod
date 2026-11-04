@@ -1,7 +1,7 @@
 using System;
-using System.Runtime.CompilerServices;
+
 using CesiumLoader.SDK.Gameplay;
-using Tools;
+
 
 namespace BattleCardPointsMod
 {
@@ -41,42 +41,65 @@ namespace BattleCardPointsMod
                 case 10005: return new PointRange { Min = 1, Max = 10, IsAttack = true, IsValid = true };
                 case 10006: return new PointRange { Min = 1, Max = 10, IsAttack = false, IsValid = true };
                 case 10007: return new PointRange { Min = 1, Max = 20, IsAttack = true, IsValid = true };
-                case 10008: return new PointRange { Min = 3, Max = 3, IsAttack = true, IsValid = true };
-                case 10009: return new PointRange { Min = 5, Max = 5, IsAttack = true, IsValid = true };
-                case 10010: return new PointRange { Min = 6, Max = 6, IsAttack = true, IsValid = true };
-                case 10011: return new PointRange { Min = 0, Max = 0, IsAttack = true, IsValid = true };
-                case 10012: return new PointRange { Min = 0, Max = 4, IsAttack = true, IsValid = true };
-                case 10013: return new PointRange { Min = 3, Max = 3, IsAttack = true, IsValid = true };
-            }
-
-            // 未知战斗牌（大于 10013）尝试从运行时配表中动态获取
-            try
-            {
-                return TryGetDynamicPointRange(cardId);
-            }
-            catch
-            {
-                return default;
+                default: return default;
             }
         }
 
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        private static PointRange TryGetDynamicPointRange(int cardId)
+        internal static int ResolvePlayedCardId(long playerId, int cardGuid)
         {
-            try
+            // Use the same retained hand-card table as the game's GetCardCost.
+            var cards = Players.Get(playerId)?.cardContainer?._HandCardData;
+            return cards != null && cards.TryGetValue(cardGuid, out var card) && card != null
+                ? card.CardId
+                : 0;
+        }
+
+        // Match by ID and occurrence, never by the position of the server's bonus list.
+        public static int TakeBonus(party.model.BattleRole role, int cardId, bool[] used)
+        {
+            for (int i = 0; i < used.Length; i++)
             {
-                if (StaticConfigure.Card.InfoDict != null && StaticConfigure.Card.InfoDict.TryGetValue(cardId, out var cfg))
+                if (!used[i] && role.CardCombatBonus[i].CardId == cardId)
                 {
-                    if (cfg != null && cfg.Params != null && cfg.Params.Count >= 2)
-                    {
-                        bool isAtk = cfg.EffectType == EffectType.Attack;
-                        return new PointRange { Min = cfg.Params[0], Max = cfg.Params[1], IsAttack = isAtk, IsValid = true };
-                    }
+                    used[i] = true;
+                    return i;
                 }
             }
-            catch { }
+            return -1;
+        }
 
-            return default;
+        // Replace only the randomness that can be attributed to recognised cards.
+        // An unexpected range or unmatched bonus leaves the server bounds intact.
+        public static bool TryNarrowPlayedRange(party.model.BattleRole role, bool attack, out int min, out int max)
+        {
+            min = attack ? role.MinAtk : role.MinDef;
+            max = attack ? role.MaxAtk : role.MaxDef;
+            int count = role.CardCombatBonus.Count;
+            if (count == 0 || count > role.UseCards.Count) return false;
+            var used = new bool[count];
+            long width = 0, lowDelta = 0, highDelta = 0;
+            int matched = 0;
+            for (int i = 0; i < role.UseCards.Count; i++)
+            {
+                // Once all bonuses arrive, the result list supplies the real card IDs.
+                int id = count == role.UseCards.Count
+                    ? role.CardCombatBonus[i].CardId
+                    : ResolvePlayedCardId(role.PlayerId, role.UseCards[i]);
+                var range = GetPointRange(id);
+                if (!range.IsValid || range.IsAttack != attack) return false;
+                width += range.Max - range.Min;
+                int index = TakeBonus(role, id, used);
+                if (index < 0) continue;
+                int bonus = role.CardCombatBonus[index].CardBonus;
+                if (bonus < range.Min || bonus > range.Max) return false;
+                matched++;
+                lowDelta += bonus - range.Min;
+                highDelta += range.Max - bonus;
+            }
+            if (matched != count || (long)max - min != width) return false;
+            min = (int)(min + lowDelta);
+            max = (int)(max - highDelta);
+            return true;
         }
 
         public static string CardName(int cardId)

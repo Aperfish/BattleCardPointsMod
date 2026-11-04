@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using FairyGUI;
 using UI;
+using Tools;
 using UnityEngine;
 
 namespace BattleCardPointsMod
@@ -13,7 +14,7 @@ namespace BattleCardPointsMod
 
         public void UpdateBadges(FightWindow fightWin, bool enabled, int fontSize)
         {
-            if (fightWin == null || !fightWin.isShowing || !enabled) return;
+            if (fightWin == null || !fightWin.isShowing) return;
             if (CardItemListField == null) return;
 
             var list = CardItemListField.GetValue(fightWin) as List<UIHandCard_Button_Card>;
@@ -27,10 +28,12 @@ namespace BattleCardPointsMod
                 if (cardObj == null || cardObj.isDisposed) continue;
 
                 var badge = cardObj.GetChild("battle_point_badge") as GTextField;
-                int cardId = item.CardData?.CardId ?? 0;
+                var config = item.CardData?.Config;
+                int cardId = config?.Id ?? 0;
                 var range = CardPointHelper.GetPointRange(cardId);
 
-                if (!range.IsValid)
+                if (!enabled || !range.IsValid ||
+                    config.EffectType != (range.IsAttack ? EffectType.Attack : EffectType.Defense))
                 {
                     if (badge != null) badge.visible = false;
                     continue;

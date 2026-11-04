@@ -12,15 +12,19 @@ using Tools;
 using UI;
 using UnityEngine;
 
-[assembly: ModManifest("战斗牌点数显示", "1.1.1", "Aperfish",
-    "在每张战斗牌上方直接显示点数，并在战斗窗口两侧展示最终攻击与防御数值。",
+[assembly: ModManifest("战斗牌点数", "1.2.2", "Aperfish",
+    "显示手牌点数范围与已出牌的实际点数。",
     Permissions = ModPermission.ReadGameState, SdkVersion = "2.9.1")]
 
 namespace BattleCardPointsMod
 {
     public static class ModEntry
     {
-        public static void Main() { ModBase.Run(new PointsMod()); }
+        public static void Main()
+        {
+            ModBase.Run(new PointsMod());
+
+        }
     }
 
     public sealed class PointsMod : ModBase
@@ -74,8 +78,8 @@ namespace BattleCardPointsMod
         public override void OnConfigChanged()
         {
             if (Config == null) return;
-            _enabled = Config.GetBool("Enabled", true);
-            _showForOthers = Config.GetBool("ShowForOthers", true);
+            _enabled = Config.GetBool("CardPointsEnabled", Config.GetBool("Enabled", true));
+            _showForOthers = Config.GetBool("CardPointsShowForOthers", Config.GetBool("ShowForOthers", true));
             _showHandPoints = Config.GetBool("ShowHandPoints", true);
             _showPlayedPoints = Config.GetBool("ShowPlayedPoints", true);
             _fontSize = Math.Max(16, Math.Min(48, Config.GetInt("FontSize", 26)));
@@ -199,7 +203,7 @@ namespace BattleCardPointsMod
                 }
 
                 var live = fight.battleFightData;
-                if (live == null || live.isEnd || live.attackerInfo == null || live.defenderInfo == null)
+                if (live == null || live.attackerInfo == null || live.defenderInfo == null)
                 {
                     _playedOverlay.Hide();
                     return;
@@ -218,7 +222,7 @@ namespace BattleCardPointsMod
                     _defenderDice = live.defenderInfo.Point;
 
                 // 2. 手牌上方点数预估范围
-                _handBadges.UpdateBadges(fightWin, _showHandPoints, _fontSize);
+                _handBadges.UpdateBadges(fightWin, _showHandPoints && !live.isEnd, _fontSize);
 
                 // 3. 双方最终数值标头与已打出卡牌
                 if (!_showForOthers && !Players.IsSelf(live.attackerInfo.PlayerId) && !Players.IsSelf(live.defenderInfo.PlayerId))
@@ -228,7 +232,9 @@ namespace BattleCardPointsMod
                 else
                 {
                     var pane = fightWin.contentPane as UIFightWindow;
-                    _playedOverlay.Update(pane, live.attackerInfo, live.defenderInfo, _attackerDice, _defenderDice,
+                    _playedOverlay.Update(pane, live.attackerInfo, live.defenderInfo,
+                        live.isEnd ? live.attackerInfo.Point : _attackerDice,
+                        live.isEnd ? live.defenderInfo.Point : _defenderDice,
                         _showPlayedPoints, _fontSize, _offsetX, _offsetY);
                 }
 
