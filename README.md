@@ -1,6 +1,6 @@
 # BattleCardPointsMod · 战斗牌点数显示
 
-用于《吉星派对》（Astral Party）的 CesiumLoader 模组。打出战斗牌后，在卡牌上方显示服务器已同步的实际点数，并在战斗窗口两侧展示双方攻防数值。
+用于《吉星派对》（Astral Party）的 CesiumLoader 模组。在战斗中打出战斗牌后立即显示牌点数
 
 ## 1.2.3 更新
 
@@ -19,10 +19,11 @@
 - 多张已出牌自动分行、每行居中，面板按下方可用空间等比缩放。
 - 保留 `OffsetX`、`OffsetY` 微调配置，点数计算保持 1.1.0 的逻辑。
 
-已通过编译，尚未进行游戏内视觉验证。
 
 ## 安装
 
+推荐使用模组市场https://forge.hiynet.com/mods
+或者
 1. 下载本仓库 [Releases](https://github.com/Aperfish/BattleCardPointsMod/releases) 里的 `BattleCardPointsMod-<版本>.zip`（或固定地址 `BattleCardPointsMod.zip`）。
 2. 解压到游戏 exe 目录下的 `AstralParty_ModLoader\mods\`，得到：
 
